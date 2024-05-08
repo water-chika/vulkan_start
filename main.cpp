@@ -2,6 +2,7 @@
 #define NOMINMAX
 #include <vulkan_helper.hpp>
 #include <iostream>
+#include <numeric>
 
 namespace vulkan_hpp_helper {
 	template<class T>
@@ -66,6 +67,9 @@ namespace vulkan_hpp_helper {
 			uint32_t queue_family_index = parent::get_queue_family_index();
 			m_queue = device.getQueue(queue_family_index, 0);
 		}
+		auto get_queue() {
+			return m_queue;
+		}
 	private:
 		vk::Queue m_queue;
 	};
@@ -99,7 +103,7 @@ namespace vulkan_hpp_helper {
 				.setImageExtent(cap.currentExtent)
 				.setImageFormat(format)
 				.setImageColorSpace(vk::ColorSpaceKHR::eSrgbNonlinear)
-				.setImageUsage(vk::ImageUsageFlagBits::eColorAttachment)
+				.setImageUsage(vk::ImageUsageFlagBits::eTransferDst)
 				.setImageArrayLayers(1)
 				.setSurface(surface)
 			);
@@ -179,6 +183,298 @@ namespace vulkan_hpp_helper {
 	private:
 		vk::CommandBuffer m_buffer;
 	};
+	template<class T>
+	class add_swapchain_command_buffers : public T {
+	public:
+		using parent = T;
+		add_swapchain_command_buffers() {
+			vk::Device device = parent::get_device();
+			vk::CommandPool pool = parent::get_command_pool();
+			uint32_t swapchain_image_count = parent::get_swapchain_images().size();
+			m_buffers = device.allocateCommandBuffers(
+				vk::CommandBufferAllocateInfo{}
+				.setCommandPool(pool)
+				.setCommandBufferCount(swapchain_image_count)
+			);
+		}
+		~add_swapchain_command_buffers() {
+			vk::Device device = parent::get_device();
+			vk::CommandPool pool = parent::get_command_pool();
+			device.freeCommandBuffers(pool, m_buffers);
+		}
+		auto get_swapchain_command_buffers() {
+			return m_buffers;
+		}
+		auto get_swapchain_command_buffer(uint32_t i) {
+			return m_buffers[i];
+		}
+	private:
+		std::vector<vk::CommandBuffer> m_buffers;
+	};
+	template<class T>
+	class record_swapchain_command_buffers : public T {
+	public:
+		using parent = T;
+		record_swapchain_command_buffers() {
+			auto buffers = parent::get_swapchain_command_buffers();
+			auto images = parent::get_swapchain_images();
+			auto queue_family_index = parent::get_queue_family_index();
+
+			if (buffers.size() != images.size()) {
+				throw std::runtime_error{ "swapchain images count != command buffers count" };
+			}
+			uint32_t index = 0;
+			for (uint32_t index = 0; index < buffers.size(); index++) {
+				vk::Image image = images[index];
+				vk::CommandBuffer buffer = buffers[index];
+
+				buffer.begin(
+					vk::CommandBufferBeginInfo{}
+				);
+				buffer.pipelineBarrier(
+					vk::PipelineStageFlagBits::eTopOfPipe,
+					vk::PipelineStageFlagBits::eTransfer,
+					{},
+					{},
+					{},
+					vk::ImageMemoryBarrier{}
+					.setImage(image)
+					.setOldLayout(vk::ImageLayout::eUndefined)
+					.setNewLayout(vk::ImageLayout::eTransferDstOptimal)
+					.setSrcAccessMask(vk::AccessFlagBits::eNone)
+					.setDstAccessMask(vk::AccessFlagBits::eTransferWrite)
+					.setSrcQueueFamilyIndex(queue_family_index)
+					.setDstQueueFamilyIndex(queue_family_index)
+					.setSubresourceRange(
+						vk::ImageSubresourceRange{}
+						.setAspectMask(vk::ImageAspectFlagBits::eColor)
+						.setLayerCount(1)
+						.setLevelCount(1)
+					)
+				);
+				buffer.clearColorImage(
+					image,
+					vk::ImageLayout::eTransferDstOptimal,
+					vk::ClearColorValue{ 100, 0, 0, 0 },
+					vk::ImageSubresourceRange{}
+					.setAspectMask(vk::ImageAspectFlagBits::eColor)
+					.setLayerCount(1)
+					.setLevelCount(1));
+				buffer.pipelineBarrier(
+					vk::PipelineStageFlagBits::eTransfer,
+					vk::PipelineStageFlagBits::eBottomOfPipe,
+					{},
+					{},
+					{},
+					vk::ImageMemoryBarrier{}
+					.setImage(image)
+					.setOldLayout(vk::ImageLayout::eTransferDstOptimal)
+					.setNewLayout(vk::ImageLayout::ePresentSrcKHR)
+					.setSrcAccessMask(vk::AccessFlagBits::eTransferWrite)
+					.setDstAccessMask({})
+					.setSrcQueueFamilyIndex(queue_family_index)
+					.setDstQueueFamilyIndex(queue_family_index)
+					.setSubresourceRange(
+						vk::ImageSubresourceRange{}
+						.setAspectMask(vk::ImageAspectFlagBits::eColor)
+						.setLayerCount(1)
+						.setLevelCount(1)
+					)
+				);
+				buffer.end();
+			}
+		}
+	};
+	template<class T>
+	class add_draw : public T{
+	public:
+		using parent = T;
+		void draw() {
+			vk::Device device = parent::get_device();
+			vk::SwapchainKHR swapchain = parent::get_swapchain();
+			vk::Queue queue = parent::get_queue();
+			vk::Semaphore acquire_image_semaphore = parent::get_acquire_next_image_semaphore();
+			
+			
+			auto [res, index] = device.acquireNextImage2KHR(
+				vk::AcquireNextImageInfoKHR{}
+				.setSwapchain(swapchain)
+				.setSemaphore(acquire_image_semaphore)
+				.setTimeout(UINT64_MAX)
+				.setDeviceMask(1)
+			);
+			if (res != vk::Result::eSuccess) {
+				throw std::runtime_error{ "acquire next image != success" };
+			}
+			parent::free_acquire_next_image_semaphore(index);
+
+			vk::Fence acquire_next_image_semaphore_fence = parent::get_acquire_next_image_semaphore_fence(index);
+			device.waitForFences(acquire_next_image_semaphore_fence, true, UINT64_MAX);
+			device.resetFences(acquire_next_image_semaphore_fence);
+
+			vk::Semaphore draw_image_semaphore = parent::get_draw_image_semaphore(index);
+			vk::CommandBuffer buffer = parent::get_swapchain_command_buffer(index);
+			vk::PipelineStageFlags wait_stage_mask{ vk::PipelineStageFlagBits::eTopOfPipe };
+			queue.submit(
+				vk::SubmitInfo{}
+				.setCommandBuffers(buffer)
+				.setWaitSemaphores(
+					acquire_image_semaphore
+				)
+				.setWaitDstStageMask(wait_stage_mask)
+				.setSignalSemaphores(
+					draw_image_semaphore
+				),
+				acquire_next_image_semaphore_fence
+			);
+			{
+				auto res = queue.presentKHR(
+					vk::PresentInfoKHR{}
+					.setImageIndices(index)
+					.setSwapchains(swapchain)
+					.setWaitSemaphores(draw_image_semaphore)
+				);
+				if (res != vk::Result::eSuccess) {
+					throw std::runtime_error{ "present return != success" };
+				}
+			}
+		}
+		~add_draw() {
+			vk::Device device = parent::get_device();
+			vk::Queue queue = parent::get_queue();
+			queue.waitIdle();
+		}
+	};
+	template<class T>
+	class add_acquire_next_image_fences : public T {
+	public:
+		using parent = T;
+		add_acquire_next_image_fences() {
+			vk::Device device = parent::get_device();
+			uint32_t swapchain_image_count = parent::get_swapchain_images().size();
+
+			m_fences.resize(swapchain_image_count + 1);
+			std::ranges::for_each(m_fences,
+				[device](vk::Fence& fence) {
+					fence = device.createFence(
+						vk::FenceCreateInfo{}
+					); }
+			);
+		}
+		~add_acquire_next_image_fences() {
+			vk::Device device = parent::get_device();
+			std::ranges::for_each(m_fences,
+				[device](vk::Fence fence) {
+					device.destroyFence(fence);
+				});
+		}
+		auto get_acquire_next_image_fences() {
+			return m_fences;
+		}
+	private:
+		std::vector<vk::Fence> m_fences;
+	};
+	template<class T>
+	class add_draw_semaphores : public T{
+	public:
+		using parent = T;
+		add_draw_semaphores() {
+			vk::Device device = parent::get_device();
+			uint32_t swapchain_image_count = parent::get_swapchain_images().size();
+			
+			m_semaphores.resize(swapchain_image_count);
+			std::ranges::for_each(m_semaphores,
+				[device](vk::Semaphore& semaphore) {
+					semaphore = device.createSemaphore(
+						vk::SemaphoreCreateInfo{}
+					);
+				});
+		}
+		~add_draw_semaphores() {
+			vk::Device device = parent::get_device();
+
+			std::ranges::for_each(m_semaphores,
+				[device](vk::Semaphore semaphore) {
+					device.destroySemaphore(semaphore);
+				});
+		}
+		auto get_draw_image_semaphore(uint32_t i) {
+			return m_semaphores[i];
+		}
+	private:
+		std::vector<vk::Semaphore> m_semaphores;
+	};
+	template<class T>
+	class add_acquire_next_image_semaphores : public T{
+	public:
+		using parent = T;
+		add_acquire_next_image_semaphores() {
+			vk::Device device = parent::get_device();
+			uint32_t swapchain_image_count = parent::get_swapchain_images().size();
+
+			m_semaphores.resize(swapchain_image_count+1);
+			std::ranges::for_each(m_semaphores,
+				[device](vk::Semaphore& semaphore) {
+					semaphore = device.createSemaphore(
+						vk::SemaphoreCreateInfo{}
+					);
+				});
+
+			m_semaphore_indices.resize(swapchain_image_count);
+			std::ranges::iota(m_semaphore_indices, 0);
+			m_free_semaphore_index = swapchain_image_count;
+		}
+		~add_acquire_next_image_semaphores() {
+			vk::Device device = parent::get_device();
+
+			std::ranges::for_each(m_semaphores,
+				[device](vk::Semaphore semaphore) {
+					device.destroySemaphore(semaphore);
+				});
+		}
+		auto get_acquire_next_image_semaphore() {
+			return m_semaphores[m_free_semaphore_index];
+		}
+		auto free_acquire_next_image_semaphore(uint32_t image_index) {
+			vk::Device device = parent::get_device();
+
+
+			std::swap(m_free_semaphore_index,m_semaphore_indices[image_index]);
+		}
+	private:
+		std::vector<vk::Semaphore> m_semaphores;
+		uint32_t m_free_semaphore_index;
+		std::vector<uint32_t> m_semaphore_indices;
+	};
+	template<class T>
+	class add_acquire_next_image_semaphore_fences : public T {
+	public:
+		using parent = T;
+		add_acquire_next_image_semaphore_fences() {
+			vk::Device device = parent::get_device();
+			uint32_t swapchain_image_count = parent::get_swapchain_images().size();
+
+			m_fences.resize(swapchain_image_count);
+			std::ranges::for_each(m_fences,
+				[device](vk::Fence& fence) {
+					fence = device.createFence(
+						vk::FenceCreateInfo{}
+					); }
+			);
+		}
+		~add_acquire_next_image_semaphore_fences() {
+			vk::Device device = parent::get_device();
+			std::ranges::for_each(m_fences,
+				[device](vk::Fence fence) {
+					device.destroyFence(fence);
+				});
+		}
+		auto get_acquire_next_image_semaphore_fence(uint32_t image_index) {
+			return m_fences[image_index];
+		}
+	private:
+		std::vector<vk::Fence> m_fences;
+	};
 }
 
 namespace windows_helper {
@@ -239,10 +535,12 @@ namespace windows_helper {
 	template<class T>
 	class add_window_loop : public T {
 	public:
+		using parent = T;
 		add_window_loop() {
 			MSG msg = { };
 			while (GetMessage(&msg, NULL, 0, 0) > 0)
 			{
+				parent::draw();
 				TranslateMessage(&msg);
 				DispatchMessage(&msg);
 			}
@@ -287,7 +585,13 @@ int main() {
 		using namespace vulkan_hpp_helper;
 		auto show_window =
 			add_window_loop<
-			add_command_buffer<
+			add_draw<
+			add_acquire_next_image_fences<
+			add_acquire_next_image_semaphores<
+			add_acquire_next_image_semaphore_fences<
+			add_draw_semaphores<
+			record_swapchain_command_buffers<
+			add_swapchain_command_buffers<
 			add_command_pool<
 			add_queue<
 			add_swapchain_images<
@@ -306,7 +610,7 @@ int main() {
 			add_window<
 			add_window_class<
 			empty_class
-			>>>>>>>>>>>>>>>>>>>
+			>>>>>>>>>>>>>>>>>>>>>>>>>
 		{};
 	}
 	catch (std::exception& e) {
