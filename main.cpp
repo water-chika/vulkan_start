@@ -3,6 +3,7 @@
 #include <vulkan_helper.hpp>
 #include <iostream>
 #include <numeric>
+#include <map>
 
 namespace vulkan_hpp_helper {
 	template<class T>
@@ -212,6 +213,24 @@ namespace vulkan_hpp_helper {
 		std::vector<vk::CommandBuffer> m_buffers;
 	};
 	template<class T>
+	class add_get_format_clear_color_value_type : public T {
+	public:
+		enum class clear_color_value_type {
+			eInt32,
+			eUint32,
+			eFloat32,
+		};
+		clear_color_value_type get_format_clear_color_value_type(vk::Format f) {
+			std::map<vk::Format, clear_color_value_type> types{
+				{vk::Format::eR8G8B8A8Unorm, clear_color_value_type::eFloat32},
+			};
+			if (!types.contains(f)) {
+				throw std::runtime_error{ "this format does not support clear color value" };
+			}
+			return types[f];
+		}
+	};
+	template<class T>
 	class record_swapchain_command_buffers : public T {
 	public:
 		using parent = T;
@@ -219,6 +238,13 @@ namespace vulkan_hpp_helper {
 			auto buffers = parent::get_swapchain_command_buffers();
 			auto images = parent::get_swapchain_images();
 			auto queue_family_index = parent::get_queue_family_index();
+
+			auto clear_color_value_type = parent::get_format_clear_color_value_type(parent::get_swapchain_image_format());
+			using value_type = decltype(clear_color_value_type);
+			std::map<value_type, vk::ClearColorValue> clear_color_values{
+				{value_type::eFloat32, vk::ClearColorValue{}.setFloat32({0.5f,0.5f,0.5f,1.0f})},
+			};
+			vk::ClearColorValue clear_color_value{ clear_color_values[clear_color_value_type] };
 
 			if (buffers.size() != images.size()) {
 				throw std::runtime_error{ "swapchain images count != command buffers count" };
@@ -255,7 +281,7 @@ namespace vulkan_hpp_helper {
 				buffer.clearColorImage(
 					image,
 					vk::ImageLayout::eTransferDstOptimal,
-					vk::ClearColorValue{ 100, 0, 0, 0 },
+					clear_color_value,
 					vk::ImageSubresourceRange{}
 					.setAspectMask(vk::ImageAspectFlagBits::eColor)
 					.setLayerCount(1)
@@ -591,6 +617,7 @@ int main() {
 			add_acquire_next_image_semaphore_fences<
 			add_draw_semaphores<
 			record_swapchain_command_buffers<
+			add_get_format_clear_color_value_type<
 			add_swapchain_command_buffers<
 			add_command_pool<
 			add_queue<
@@ -610,7 +637,7 @@ int main() {
 			add_window<
 			add_window_class<
 			empty_class
-			>>>>>>>>>>>>>>>>>>>>>>>>>
+			>>>>>>>>>>>>>>>>>>>>>>>>>>
 		{};
 	}
 	catch (std::exception& e) {
