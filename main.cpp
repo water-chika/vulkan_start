@@ -213,6 +213,14 @@ namespace vulkan_hpp_helper {
 			return Samples;
 		}
 	};
+	template<vk::ImageTiling Tiling, class T>
+	class set_image_tiling : public T {
+	public:
+		using parent = T;
+		auto get_image_tiling() {
+			return Tiling;
+		}
+	};
 	template<class T>
 	class add_images : public T {
 	public:
@@ -225,6 +233,7 @@ namespace vulkan_hpp_helper {
 			uint32_t queue_family_index = parent::get_queue_family_index();
 			vk::ImageUsageFlags image_usage = parent::get_image_usages();
 			vk::SampleCountFlagBits samples = parent::get_image_samples();
+			vk::ImageTiling tiling = parent::get_image_tiling();
 
 			uint32_t image_count = parent::get_image_count();
 
@@ -232,7 +241,7 @@ namespace vulkan_hpp_helper {
 
 			std::ranges::for_each(
 				m_images,
-				[device, extent, format, image_type, queue_family_index, image_usage, samples](vk::Image& image) {
+				[device, extent, format, image_type, queue_family_index, image_usage, samples, tiling](vk::Image& image) {
 					image = device.createImage(
 						vk::ImageCreateInfo{}
 						.setArrayLayers(1)
@@ -244,6 +253,8 @@ namespace vulkan_hpp_helper {
 						.setQueueFamilyIndices(queue_family_index)
 						.setUsage(image_usage)
 						.setSamples(samples)
+						.setTiling(tiling)
+						.setSharingMode(vk::SharingMode::eExclusive)
 					);
 				}
 			);
@@ -470,8 +481,12 @@ namespace vulkan_hpp_helper {
 			auto clear_color_value_type = parent::get_format_clear_color_value_type(parent::get_image_format());
 			using value_type = decltype(clear_color_value_type);
 			std::map<value_type, vk::ClearColorValue> clear_color_values{
-				{value_type::eFloat32, vk::ClearColorValue{}.setFloat32({0.5f,0.5f,0.5f,1.0f})},
+				{value_type::eFloat32, vk::ClearColorValue{}.setFloat32({0.1f,0.0f,0.0f,0.0f})},
+				{value_type::eUint32, vk::ClearColorValue{}.setUint32({0,0,0,0})},
 			};
+			if (!clear_color_values.contains(clear_color_value_type)) {
+				throw std::runtime_error{ "unsupported clear color value type" };
+			}
 			vk::ClearColorValue clear_color_value{ clear_color_values[clear_color_value_type] };
 
 			if (buffers.size() != swapchain_images.size()) {
@@ -860,14 +875,57 @@ namespace windows_helper {
 	private:
 		ATOM m_window_class;
 	};
+	template<int Width, int Height, class T>
+	class set_window_resolution : public T {
+	public:
+		auto get_window_width() {
+			return Width;
+		}
+		auto get_window_height() {
+			return Height;
+		}
+	};
+	template<int WindowStyle, class T>
+	class set_window_style : public T {
+	public:
+		auto get_window_style() {
+			return WindowStyle;
+		}
+	};
+	template<class T>
+	class adjust_window_resolution : public T {
+	public:
+		using parent = T;
+		adjust_window_resolution() {
+			auto width = parent::get_window_width();
+			auto height = parent::get_window_height();
+			auto window_style = parent::get_window_style();
+			RECT rect = { 0,0,width,height };
+			AdjustWindowRect(&rect, window_style, false);
+			m_width = rect.right - rect.left;
+			m_height = rect.bottom - rect.top;
+		}
+		auto get_window_width() {
+			return m_width;
+		}
+		auto get_window_height() {
+			return m_height;
+		}
+	private:
+		int m_width;
+		int m_height;
+	};
 	template<class T>
 	class add_window : public T {
 	public:
 		using parent = T;
 		add_window() {
+			int width = parent::get_window_width();
+			int height = parent::get_window_height();
+			int window_style = parent::get_window_style();
 			m_window = CreateWindowA(
-				(LPCSTR)parent::get_window_class(), "draw_pixels", WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT,
-				CW_USEDEFAULT, CW_USEDEFAULT, NULL, NULL, GetModuleHandle(NULL), NULL);
+				(LPCSTR)parent::get_window_class(), "draw_pixels", window_style, CW_USEDEFAULT, CW_USEDEFAULT,
+				width, height, NULL, NULL, GetModuleHandle(NULL), NULL);
 			if (m_window == NULL) {
 				throw std::runtime_error("failed to create window");
 			}
@@ -950,6 +1008,7 @@ int main() {
 			add_image_memory_property<vk::MemoryPropertyFlagBits::eDeviceLocal,
 			add_empty_image_memory_properties<
 			add_images<
+			set_image_tiling<vk::ImageTiling::eOptimal,
 			add_image_usage<vk::ImageUsageFlagBits::eTransferDst,
 			add_image_usage<vk::ImageUsageFlagBits::eTransferSrc,
 			add_empty_image_usages<
@@ -975,9 +1034,12 @@ int main() {
 			add_surface_extension<
 			add_empty_extensions<
 			add_window<
+			adjust_window_resolution<
+			set_window_resolution<151, 151,
+			set_window_style<WS_OVERLAPPEDWINDOW,
 			add_window_class<
 			empty_class
-			>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+			>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 		{};
 	}
 	catch (std::exception& e) {
