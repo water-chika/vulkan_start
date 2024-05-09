@@ -244,8 +244,99 @@ namespace vulkan_hpp_helper {
 				}
 			);
 		}
+		auto get_images() {
+			return m_images;
+		}
 	private:
 		std::vector<vk::Image> m_images;
+	};
+	template<class T>
+	class add_images_memories : public T {
+	public:
+		using parent = T;
+		add_images_memories() {
+			vk::Device device = parent::get_device();
+			auto images = parent::get_images();
+			vk::MemoryPropertyFlags memory_properties = parent::get_image_memory_properties();
+
+			m_memories.resize(images.size());
+			std::ranges::transform(images, m_memories.begin(),
+				[device, memory_properties, this](vk::Image image) {
+					auto memory_requirements = device.getImageMemoryRequirements(
+						image
+					);
+					uint32_t memory_type_index = parent::find_properties(memory_requirements.memoryTypeBits, memory_properties);
+					auto memory = device.allocateMemory(
+						vk::MemoryAllocateInfo{}
+						.setAllocationSize(memory_requirements.size)
+						.setMemoryTypeIndex(memory_type_index)
+					);
+					device.bindImageMemory(image, memory, 0);
+					return memory;
+				});
+		}
+		~add_images_memories() {
+			vk::Device device = parent::get_device();
+			std::ranges::for_each(m_memories,
+				[device](vk::DeviceMemory memory) {
+					device.freeMemory(memory);
+				});
+		}
+		auto get_images_memories() {
+			return m_memories;
+		}
+	private:
+		std::vector<vk::DeviceMemory> m_memories;
+	};
+	template<vk::MemoryPropertyFlagBits Property, class T>
+	class add_image_memory_property : public T {
+	public:
+		using parent = T;
+		auto get_image_memory_properties() {
+			auto properties = parent::get_image_memory_properties();
+			return properties | Property;
+		}
+	};
+	template<class T>
+	class add_empty_image_memory_properties : public T {
+	public:
+		auto get_image_memory_properties() {
+			return vk::MemoryPropertyFlagBits{};
+		}
+	};
+	template<class T>
+	class cache_physical_device_memory_properties : public T {
+	public:
+		using parent = T;
+		cache_physical_device_memory_properties() {
+			vk::PhysicalDevice physical_device = parent::get_physical_device();
+			m_properties = physical_device.getMemoryProperties();
+		}
+		auto get_physical_device_memory_properties() {
+			return m_properties;
+		}
+	private:
+		vk::PhysicalDeviceMemoryProperties m_properties;
+	};
+	template<class T>
+	class add_find_properties : public T {
+	public:
+		using parent = T;
+		uint32_t find_properties(uint32_t memory_type_bits_requirements, vk::MemoryPropertyFlags required_property) {
+			vk::PhysicalDeviceMemoryProperties memory_properties = parent::get_physical_device_memory_properties();
+			const uint32_t memory_count = memory_properties.memoryTypeCount;
+			for (uint32_t memoryIndex = 0; memoryIndex < memory_count; memoryIndex++) {
+				const uint32_t memoryTypeBits = (1 << memoryIndex);
+				const bool is_required_memory_type = memory_type_bits_requirements & memoryTypeBits;
+				const vk::MemoryPropertyFlags properties =
+					memory_properties.memoryTypes[memoryIndex].propertyFlags;
+				const bool has_required_properties =
+					(properties & required_property) == required_property;
+				if (is_required_memory_type && has_required_properties)
+					return memoryIndex;
+			}
+			throw std::runtime_error{ "failed find memory property" };
+		}
 	};
 	template<class T>
 	class add_command_pool : public T {
@@ -346,8 +437,10 @@ namespace vulkan_hpp_helper {
 		using parent = T;
 		record_swapchain_command_buffers() {
 			auto buffers = parent::get_swapchain_command_buffers();
-			auto images = parent::get_swapchain_images();
+			auto swapchain_images = parent::get_swapchain_images();
 			auto queue_family_index = parent::get_queue_family_index();
+			auto render_images = parent::get_images();
+			auto image_extent = parent::get_image_extent();
 
 			auto clear_color_value_type = parent::get_format_clear_color_value_type(parent::get_swapchain_image_format());
 			using value_type = decltype(clear_color_value_type);
@@ -356,12 +449,13 @@ namespace vulkan_hpp_helper {
 			};
 			vk::ClearColorValue clear_color_value{ clear_color_values[clear_color_value_type] };
 
-			if (buffers.size() != images.size()) {
+			if (buffers.size() != swapchain_images.size()) {
 				throw std::runtime_error{ "swapchain images count != command buffers count" };
 			}
 			uint32_t index = 0;
 			for (uint32_t index = 0; index < buffers.size(); index++) {
-				vk::Image image = images[index];
+				vk::Image swapchain_image = swapchain_images[index];
+				vk::Image render_image = render_images[index];
 				vk::CommandBuffer buffer = buffers[index];
 
 				buffer.begin(
@@ -374,7 +468,7 @@ namespace vulkan_hpp_helper {
 					{},
 					{},
 					vk::ImageMemoryBarrier{}
-					.setImage(image)
+					.setImage(render_image)
 					.setOldLayout(vk::ImageLayout::eUndefined)
 					.setNewLayout(vk::ImageLayout::eTransferDstOptimal)
 					.setSrcAccessMask(vk::AccessFlagBits::eNone)
@@ -389,7 +483,7 @@ namespace vulkan_hpp_helper {
 					)
 				);
 				buffer.clearColorImage(
-					image,
+					render_image,
 					vk::ImageLayout::eTransferDstOptimal,
 					clear_color_value,
 					vk::ImageSubresourceRange{}
@@ -398,12 +492,56 @@ namespace vulkan_hpp_helper {
 					.setLevelCount(1));
 				buffer.pipelineBarrier(
 					vk::PipelineStageFlagBits::eTransfer,
+					vk::PipelineStageFlagBits::eTransfer,
+					{}, {}, {},
+					vk::ImageMemoryBarrier{}
+					.setImage(render_image)
+					.setOldLayout(vk::ImageLayout::eTransferDstOptimal)
+					.setNewLayout(vk::ImageLayout::eTransferSrcOptimal)
+					.setSrcAccessMask(vk::AccessFlagBits::eTransferRead)
+					.setDstAccessMask(vk::AccessFlagBits::eTransferWrite)
+					.setSrcQueueFamilyIndex(queue_family_index)
+					.setDstQueueFamilyIndex(queue_family_index)
+					.setSubresourceRange(
+						vk::ImageSubresourceRange{}
+						.setAspectMask(vk::ImageAspectFlagBits::eColor)
+						.setLayerCount(1)
+						.setLevelCount(1)
+					)
+				);
+				buffer.pipelineBarrier(
+					vk::PipelineStageFlagBits::eTopOfPipe,
+					vk::PipelineStageFlagBits::eTransfer,
+					{}, {}, {},
+					vk::ImageMemoryBarrier{}
+					.setImage(swapchain_image)
+					.setOldLayout(vk::ImageLayout::eUndefined)
+					.setNewLayout(vk::ImageLayout::eTransferDstOptimal)
+					.setSrcAccessMask(vk::AccessFlagBits::eNone)
+					.setDstAccessMask(vk::AccessFlagBits::eTransferWrite)
+					.setSrcQueueFamilyIndex(queue_family_index)
+					.setDstQueueFamilyIndex(queue_family_index)
+					.setSubresourceRange(
+						vk::ImageSubresourceRange{}
+						.setAspectMask(vk::ImageAspectFlagBits::eColor)
+						.setLayerCount(1)
+						.setLevelCount(1)
+					)
+				);
+				buffer.copyImage(render_image, vk::ImageLayout::eTransferSrcOptimal, swapchain_image, vk::ImageLayout::eTransferDstOptimal,
+					vk::ImageCopy{}
+					.setSrcSubresource(vk::ImageSubresourceLayers{}.setLayerCount(1).setAspectMask(vk::ImageAspectFlagBits::eColor))
+					.setDstSubresource(vk::ImageSubresourceLayers{}.setLayerCount(1).setAspectMask(vk::ImageAspectFlagBits::eColor))
+					.setExtent(image_extent)
+				);
+				buffer.pipelineBarrier(
+					vk::PipelineStageFlagBits::eTransfer,
 					vk::PipelineStageFlagBits::eBottomOfPipe,
 					{},
 					{},
 					{},
 					vk::ImageMemoryBarrier{}
-					.setImage(image)
+					.setImage(swapchain_image)
 					.setOldLayout(vk::ImageLayout::eTransferDstOptimal)
 					.setNewLayout(vk::ImageLayout::ePresentSrcKHR)
 					.setSrcAccessMask(vk::AccessFlagBits::eTransferWrite)
@@ -731,7 +869,11 @@ int main() {
 			add_swapchain_command_buffers<
 			add_command_pool<
 			add_queue<
+			add_images_memories<
+			add_image_memory_property<vk::MemoryPropertyFlagBits::eDeviceLocal,
+			add_empty_image_memory_properties<
 			add_images<
+			add_image_usage<vk::ImageUsageFlagBits::eTransferDst,
 			add_image_usage<vk::ImageUsageFlagBits::eTransferSrc,
 			add_empty_image_usages<
 			add_image_count_equal_swapchain_image_count<
@@ -746,6 +888,8 @@ int main() {
 			add_queue_family_index<
 			add_swapchain_extension <
 			add_empty_extensions<
+			add_find_properties<
+			cache_physical_device_memory_properties<
 			add_physical_device<
 			vulkan_windows_helper::add_windows_surface<
 			add_instance<
@@ -755,7 +899,7 @@ int main() {
 			add_window<
 			add_window_class<
 			empty_class
-			>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+			>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 		{};
 	}
 	catch (std::exception& e) {
