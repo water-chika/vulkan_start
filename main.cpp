@@ -79,6 +79,9 @@ namespace vulkan_hpp_helper {
 	public:
 		using parent = T;
 		add_swapchain_image_format() {
+			vk::PhysicalDevice physical_device = parent::get_physical_device();
+			vk::SurfaceKHR surface = parent::get_surface();
+			std::vector<vk::SurfaceFormatKHR> formats = physical_device.getSurfaceFormatsKHR(surface);
 			m_format = vk::Format::eR8G8B8A8Unorm;
 		}
 		auto get_swapchain_image_format() {
@@ -202,6 +205,14 @@ namespace vulkan_hpp_helper {
 			return usages | Usage;
 		}
 	};
+	template<vk::SampleCountFlagBits Samples, class T>
+	class set_image_samples : public T {
+	public:
+		using parent = T;
+		auto get_image_samples() {
+			return Samples;
+		}
+	};
 	template<class T>
 	class add_images : public T {
 	public:
@@ -213,6 +224,7 @@ namespace vulkan_hpp_helper {
 			vk::ImageType image_type = parent::get_image_type();
 			uint32_t queue_family_index = parent::get_queue_family_index();
 			vk::ImageUsageFlags image_usage = parent::get_image_usages();
+			vk::SampleCountFlagBits samples = parent::get_image_samples();
 
 			uint32_t image_count = parent::get_image_count();
 
@@ -220,7 +232,7 @@ namespace vulkan_hpp_helper {
 
 			std::ranges::for_each(
 				m_images,
-				[device, extent, format, image_type, queue_family_index, image_usage](vk::Image& image) {
+				[device, extent, format, image_type, queue_family_index, image_usage, samples](vk::Image& image) {
 					image = device.createImage(
 						vk::ImageCreateInfo{}
 						.setArrayLayers(1)
@@ -231,6 +243,7 @@ namespace vulkan_hpp_helper {
 						.setMipLevels(1)
 						.setQueueFamilyIndices(queue_family_index)
 						.setUsage(image_usage)
+						.setSamples(samples)
 					);
 				}
 			);
@@ -249,6 +262,14 @@ namespace vulkan_hpp_helper {
 		}
 	private:
 		std::vector<vk::Image> m_images;
+	};
+	template<class T>
+	class rename_images : public T {
+	public:
+		using parent = T;
+		auto get_intermediate_images() {
+			return parent::get_images();
+		}
 	};
 	template<class T>
 	class add_images_memories : public T {
@@ -424,6 +445,9 @@ namespace vulkan_hpp_helper {
 		clear_color_value_type get_format_clear_color_value_type(vk::Format f) {
 			std::map<vk::Format, clear_color_value_type> types{
 				{vk::Format::eR8G8B8A8Unorm, clear_color_value_type::eFloat32},
+				{vk::Format::eR32G32B32A32Sfloat, clear_color_value_type::eFloat32},
+				{vk::Format::eR8G8B8A8Srgb, clear_color_value_type::eUint32},
+				{vk::Format::eR32G32B32A32Uint, clear_color_value_type::eUint32},
 			};
 			if (!types.contains(f)) {
 				throw std::runtime_error{ "this format does not support clear color value" };
@@ -439,10 +463,11 @@ namespace vulkan_hpp_helper {
 			auto buffers = parent::get_swapchain_command_buffers();
 			auto swapchain_images = parent::get_swapchain_images();
 			auto queue_family_index = parent::get_queue_family_index();
-			auto render_images = parent::get_images();
+			auto render_images = parent::get_intermediate_images();
+			auto unsampled_images = parent::get_images();
 			auto image_extent = parent::get_image_extent();
 
-			auto clear_color_value_type = parent::get_format_clear_color_value_type(parent::get_swapchain_image_format());
+			auto clear_color_value_type = parent::get_format_clear_color_value_type(parent::get_image_format());
 			using value_type = decltype(clear_color_value_type);
 			std::map<value_type, vk::ClearColorValue> clear_color_values{
 				{value_type::eFloat32, vk::ClearColorValue{}.setFloat32({0.5f,0.5f,0.5f,1.0f})},
@@ -456,6 +481,7 @@ namespace vulkan_hpp_helper {
 			for (uint32_t index = 0; index < buffers.size(); index++) {
 				vk::Image swapchain_image = swapchain_images[index];
 				vk::Image render_image = render_images[index];
+				vk::Image unsampled_image = unsampled_images[index];
 				vk::CommandBuffer buffer = buffers[index];
 
 				buffer.begin(
@@ -514,6 +540,50 @@ namespace vulkan_hpp_helper {
 					vk::PipelineStageFlagBits::eTransfer,
 					{}, {}, {},
 					vk::ImageMemoryBarrier{}
+					.setImage(unsampled_image)
+					.setOldLayout(vk::ImageLayout::eUndefined)
+					.setNewLayout(vk::ImageLayout::eTransferDstOptimal)
+					.setSrcAccessMask(vk::AccessFlagBits::eNone)
+					.setDstAccessMask(vk::AccessFlagBits::eTransferWrite)
+					.setSrcQueueFamilyIndex(queue_family_index)
+					.setDstQueueFamilyIndex(queue_family_index)
+					.setSubresourceRange(
+						vk::ImageSubresourceRange{}
+						.setAspectMask(vk::ImageAspectFlagBits::eColor)
+						.setLayerCount(1)
+						.setLevelCount(1)
+					)
+				);
+				buffer.resolveImage(render_image, vk::ImageLayout::eTransferSrcOptimal, unsampled_image, vk::ImageLayout::eTransferDstOptimal,
+					vk::ImageResolve{}
+					.setSrcSubresource(vk::ImageSubresourceLayers{}.setLayerCount(1).setAspectMask(vk::ImageAspectFlagBits::eColor))
+					.setDstSubresource(vk::ImageSubresourceLayers{}.setLayerCount(1).setAspectMask(vk::ImageAspectFlagBits::eColor))
+					.setExtent(image_extent)
+				);
+				buffer.pipelineBarrier(
+					vk::PipelineStageFlagBits::eTransfer,
+					vk::PipelineStageFlagBits::eTransfer,
+					{}, {}, {},
+					vk::ImageMemoryBarrier{}
+					.setImage(unsampled_image)
+					.setOldLayout(vk::ImageLayout::eTransferDstOptimal)
+					.setNewLayout(vk::ImageLayout::eTransferSrcOptimal)
+					.setSrcAccessMask(vk::AccessFlagBits::eTransferRead)
+					.setDstAccessMask(vk::AccessFlagBits::eTransferWrite)
+					.setSrcQueueFamilyIndex(queue_family_index)
+					.setDstQueueFamilyIndex(queue_family_index)
+					.setSubresourceRange(
+						vk::ImageSubresourceRange{}
+						.setAspectMask(vk::ImageAspectFlagBits::eColor)
+						.setLayerCount(1)
+						.setLevelCount(1)
+					)
+				);
+				buffer.pipelineBarrier(
+					vk::PipelineStageFlagBits::eTopOfPipe,
+					vk::PipelineStageFlagBits::eTransfer,
+					{}, {}, {},
+					vk::ImageMemoryBarrier{}
 					.setImage(swapchain_image)
 					.setOldLayout(vk::ImageLayout::eUndefined)
 					.setNewLayout(vk::ImageLayout::eTransferDstOptimal)
@@ -528,11 +598,14 @@ namespace vulkan_hpp_helper {
 						.setLevelCount(1)
 					)
 				);
-				buffer.copyImage(render_image, vk::ImageLayout::eTransferSrcOptimal, swapchain_image, vk::ImageLayout::eTransferDstOptimal,
-					vk::ImageCopy{}
+				vk::Offset3D image_end{ static_cast<int32_t>(image_extent.width), static_cast<int32_t>(image_extent.height), static_cast<int32_t>(image_extent.depth) };
+				buffer.blitImage(unsampled_image, vk::ImageLayout::eTransferSrcOptimal, swapchain_image, vk::ImageLayout::eTransferDstOptimal,
+					vk::ImageBlit{}
 					.setSrcSubresource(vk::ImageSubresourceLayers{}.setLayerCount(1).setAspectMask(vk::ImageAspectFlagBits::eColor))
 					.setDstSubresource(vk::ImageSubresourceLayers{}.setLayerCount(1).setAspectMask(vk::ImageAspectFlagBits::eColor))
-					.setExtent(image_extent)
+					.setSrcOffsets(std::array { vk::Offset3D{ 0,0,0 }, image_end})
+					.setDstOffsets(std::array{ vk::Offset3D{ 0,0,0 }, image_end}),
+					vk::Filter::eNearest
 				);
 				buffer.pipelineBarrier(
 					vk::PipelineStageFlagBits::eTransfer,
@@ -870,6 +943,10 @@ int main() {
 			add_command_pool<
 			add_queue<
 			add_images_memories<
+			add_images<
+			set_image_samples<vk::SampleCountFlagBits::e1,
+			rename_images<
+			add_images_memories<
 			add_image_memory_property<vk::MemoryPropertyFlagBits::eDeviceLocal,
 			add_empty_image_memory_properties<
 			add_images<
@@ -877,9 +954,10 @@ int main() {
 			add_image_usage<vk::ImageUsageFlagBits::eTransferSrc,
 			add_empty_image_usages<
 			add_image_count_equal_swapchain_image_count<
-			add_image_format<vk::Format::eR32G32B32A32Uint,
+			add_image_format<vk::Format::eR32G32B32A32Sfloat,
 			add_image_extent_equal_swapchain_image_extent<
 			add_image_type<vk::ImageType::e2D,
+			set_image_samples<vk::SampleCountFlagBits::e8,
 			add_swapchain_images<
 			add_swapchain<
 			add_swapchain_image_extent_equal_surface_current_extent<
@@ -899,7 +977,7 @@ int main() {
 			add_window<
 			add_window_class<
 			empty_class
-			>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+			>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 		{};
 	}
 	catch (std::exception& e) {
