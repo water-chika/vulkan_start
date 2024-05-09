@@ -88,6 +88,17 @@ namespace vulkan_hpp_helper {
 		vk::Format m_format;
 	};
 	template<class T>
+	class add_swapchain_image_extent_equal_surface_current_extent : public T {
+	public:
+		using parent = T;
+		auto get_swapchain_image_extent() {
+			vk::SurfaceKHR surface = parent::get_surface();
+			vk::PhysicalDevice physical_device = parent::get_physical_device();
+			auto cap = physical_device.getSurfaceCapabilitiesKHR(surface);
+			return cap.currentExtent;
+		}
+	};
+	template<class T>
 	class add_swapchain : public T {
 	public:
 		using parent = T;
@@ -96,12 +107,13 @@ namespace vulkan_hpp_helper {
 			vk::PhysicalDevice physical_device = parent::get_physical_device();
 			vk::SurfaceKHR surface = parent::get_surface();
 			vk::Format format = parent::get_swapchain_image_format();
+			vk::Extent2D swapchain_image_extent = parent::get_swapchain_image_extent();
 
 			auto cap = physical_device.getSurfaceCapabilitiesKHR(surface);
 			m_swapchain = device.createSwapchainKHR(
 				vk::SwapchainCreateInfoKHR{}
 				.setMinImageCount(cap.minImageCount)
-				.setImageExtent(cap.currentExtent)
+				.setImageExtent(swapchain_image_extent)
 				.setImageFormat(format)
 				.setImageColorSpace(vk::ColorSpaceKHR::eSrgbNonlinear)
 				.setImageUsage(vk::ImageUsageFlagBits::eTransferDst)
@@ -133,6 +145,104 @@ namespace vulkan_hpp_helper {
 		}
 		auto get_swapchain_images() {
 			return m_images;
+		}
+	private:
+		std::vector<vk::Image> m_images;
+	};
+	template<class T>
+	class add_image_extent_equal_swapchain_image_extent : public T {
+	public:
+		using parent = T;
+		auto get_image_extent() {
+			return vk::Extent3D{ parent::get_swapchain_image_extent(), 1 };
+		}
+	};
+	template<class T>
+	class add_image_count_equal_swapchain_image_count : public T {
+	public:
+		using parent = T;
+		auto get_image_count() {
+			return parent::get_swapchain_images().size();
+		}
+	};
+	template<vk::Format f, class T>
+	class add_image_format : public T {
+	public:
+		auto get_image_format() {
+			return f;
+		}
+	};
+	template<vk::ImageType ImageType, class T>
+	class add_image_type : public T {
+	public:
+		auto get_image_type() {
+			return ImageType;
+		}
+	};
+	template<uint32_t ImageCount, class T>
+	class add_image_count : public T {
+	public:
+		auto get_image_count() {
+			return ImageCount;
+		}
+	};
+	template<class T>
+	class add_empty_image_usages : public T {
+	public:
+		auto get_image_usages() {
+			return vk::ImageUsageFlags{};
+		}
+	};
+	template<vk::ImageUsageFlagBits Usage, class T>
+	class add_image_usage : public T {
+	public:
+		using parent = T;
+		auto get_image_usages() {
+			vk::ImageUsageFlags usages = parent::get_image_usages();
+			return usages | Usage;
+		}
+	};
+	template<class T>
+	class add_images : public T {
+	public:
+		using parent = T;
+		add_images() {
+			vk::Device device = parent::get_device();
+			vk::Extent3D extent = parent::get_image_extent();
+			vk::Format format = parent::get_image_format();
+			vk::ImageType image_type = parent::get_image_type();
+			uint32_t queue_family_index = parent::get_queue_family_index();
+			vk::ImageUsageFlags image_usage = parent::get_image_usages();
+
+			uint32_t image_count = parent::get_image_count();
+
+			m_images.resize(image_count);
+
+			std::ranges::for_each(
+				m_images,
+				[device, extent, format, image_type, queue_family_index, image_usage](vk::Image& image) {
+					image = device.createImage(
+						vk::ImageCreateInfo{}
+						.setArrayLayers(1)
+						.setExtent(extent)
+						.setFormat(format)
+						.setImageType(image_type)
+						.setInitialLayout(vk::ImageLayout::eUndefined)
+						.setMipLevels(1)
+						.setQueueFamilyIndices(queue_family_index)
+						.setUsage(image_usage)
+					);
+				}
+			);
+		}
+		~add_images() {
+			vk::Device device = parent::get_device();
+			std::ranges::for_each(
+				m_images,
+				[device](vk::Image image) {
+					device.destroyImage(image);
+				}
+			);
 		}
 	private:
 		std::vector<vk::Image> m_images;
@@ -621,8 +731,16 @@ int main() {
 			add_swapchain_command_buffers<
 			add_command_pool<
 			add_queue<
+			add_images<
+			add_image_usage<vk::ImageUsageFlagBits::eTransferSrc,
+			add_empty_image_usages<
+			add_image_count_equal_swapchain_image_count<
+			add_image_format<vk::Format::eR32G32B32A32Uint,
+			add_image_extent_equal_swapchain_image_extent<
+			add_image_type<vk::ImageType::e2D,
 			add_swapchain_images<
 			add_swapchain<
+			add_swapchain_image_extent_equal_surface_current_extent<
 			add_swapchain_image_format<
 			add_device<
 			add_queue_family_index<
@@ -637,7 +755,7 @@ int main() {
 			add_window<
 			add_window_class<
 			empty_class
-			>>>>>>>>>>>>>>>>>>>>>>>>>>
+			>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 		{};
 	}
 	catch (std::exception& e) {
