@@ -837,6 +837,190 @@ namespace vulkan_hpp_helper {
 	private:
 		std::vector<vk::Fence> m_fences;
 	};
+	template<class T>
+	class add_graphics_pipeline : public T {
+	public:
+		using parent = T;
+		add_graphics_pipeline() {
+			vk::Device device = parent::get_device();
+			vk::PipelineLayout pipeline_layout = parent::get_pipeline_layout();
+			vk::PipelineColorBlendStateCreateInfo color_blend_state = parent::get_pipeline_color_blend_state_create_info();
+			vk::PipelineDepthStencilStateCreateInfo depth_stencil_state = parent::get_pipeline_depth_stencil_state_create_info();
+			vk::PipelineDynamicStateCreateInfo dynamic_state = parent::get_pipeline_dynamic_state_create_info();
+			vk::PipelineInputAssemblyStateCreateInfo input_assembly_state = parent::get_pipeline_input_assembly_state_create_info();
+			vk::PipelineMultisampleStateCreateInfo multisample_state =
+				parent::get_pipeline_multisample_state_create_info();
+			vk::PipelineRasterizationStateCreateInfo rasterization_state =
+				parent::get_pipeline_rasterization_state_create_info();
+			auto stages =
+				parent::get_pipeline_stages();
+			vk::PipelineTessellationStateCreateInfo tessellation_state =
+				parent::get_pipeline_tessellation_state_create_info();
+			vk::PipelineVertexInputStateCreateInfo vertex_input_state =
+				parent::get_pipeline_vertex_input_state_create_info();
+			vk::PipelineViewportStateCreateInfo viewport_state =
+				parent::get_pipeline_viewport_state_create_info();
+			uint32_t subpass = parent::get_subpass();
+			
+			m_pipeline = device.createGraphicsPipeline(
+				{},
+				vk::GraphicsPipelineCreateInfo{}
+				.setLayout(pipeline_layout)
+				.setPColorBlendState(&color_blend_state)
+				.setPDepthStencilState(&depth_stencil_state)
+				.setPDynamicState(&dynamic_state)
+				.setPInputAssemblyState(&input_assembly_state)
+				.setPMultisampleState(&multisample_state)
+				.setPRasterizationState(&rasterization_state)
+				.setStages(stages)
+				.setPTessellationState(&tessellation_state)
+				.setPVertexInputState(&vertex_input_state)
+				.setPViewportState(&viewport_state)
+				.setSubpass(subpass)
+			);
+		}
+		~add_graphics_pipeline() {
+			vk::Device device = parent::get_device();
+			device.destroyPipeline(m_pipeline);
+		}
+		auto get_pipeline() {
+			return m_pipeline;
+		}
+	private:
+		vk::Pipeline m_pipeline;
+	};
+	template<class T>
+	class disable_pipeline_depth_stencil : public T {
+	public:
+		auto get_pipeline_depth_stencil_state_create_info() {
+			return vk::PipelineDepthStencilStateCreateInfo{}
+		}
+	};
+	template<class T>
+	class add_pipeline_color_blend_state_create_info : public T {
+	public:
+		using parent = T;
+		auto get_pipeline_color_blend_state_create_info() {
+			auto attachments = parent::get_pipeline_color_blend_attachment_states();
+			return vk::PipelineColorBlendStateCreateInfo{}
+				.setAttachments(
+					attachments
+				);
+		}
+	};
+	template<uint32_t AttachmentIndex, class T>
+	class disable_pipeline_attachment_color_blend : public T {
+	public:
+		using parent = T;
+		auto get_pipeline_color_blend_attachment_states() {
+			auto attachments = parent::get_pipeline_color_blend_attachment_states();
+			attachments[AttachmentIndex]
+				.setBlendEnable(false);
+			return attachments;
+		}
+	};
+	template<uint32_t AttachmentCount, class T>
+	class add_pipeline_color_blend_attachment_states : public T {
+	public:
+		auto get_pipeline_color_blend_attachment_states() {
+			return std::vector<vk::PipelineColorBlendAttachmentState>(AttachmentCount);
+		}
+	};
+	template<class T>
+	class add_pipeline_layout : public T {
+	public:
+		using parent = T;
+		add_pipeline_layout() {
+			vk::Device device = parent::get_device();
+			auto set_layouts = parent::get_descriptor_set_layouts();
+			auto push_constant_ranges = parent::get_pipeline_layout_push_constant_ranges();
+			
+			m_layout = device.createPipelineLayout(
+				vk::PipelineLayoutCreateInfo{}
+				.setSetLayouts(set_layouts)
+				.setPushConstantRanges(push_constant_ranges)
+			);
+		}
+		~add_pipeline_layout() {
+			vk::Device device = parent::get_device();
+			device.destroyPipelineLayout(m_layout);
+		}
+		auto get_pipeline_layout() {
+			return m_layout;
+		}
+	private:
+		vk::PipelineLayout m_layout;
+	};
+	template<class T>
+	class add_descriptor_set_layout : public T {
+	public:
+		using parent = T;
+		add_descriptor_set_layout() {
+			vk::Device device = parent::get_device();
+			auto bindings = parent::get_descriptor_set_layout_bindings();
+			device.createDescriptorSetLayout(
+				vk::DescriptorSetLayoutCreateInfo{}
+				.setBindings(bindings)
+			);
+		}
+		~add_descriptor_set_layout() {
+			vk::Device device = parent::get_device();
+			device.destroyDescriptorSetLayout(m_layout);
+		}
+	private:
+		vk::DescriptorSetLayout m_layout;
+	};
+	template<class T>
+	class add_descriptor_set_layout_binding : public T {
+	public:
+		using parent = T;
+		add_descriptor_set_layout_binding() {
+			uint32_t binding = parent::get_binding();
+			uint32_t descriptor_count = parent::get_descriptor_count();
+			vk::DescriptorType descriptor_type = parent::get_desciptor_type();
+			auto immutable_samplers = parent::get_immutable_samplers();
+			vk::PipelineStageFlags stage_flags = parent::get_pipeline_stage_flags();
+			m_binding = vk::DescriptorSetLayoutBinding{}
+				.setBinding(binding)
+				.setDescriptorCount(descriptor_count)
+				.setDescriptorType(descriptor_type)
+				.setImmutableSamplers(immutable_samplers)
+				.setStageFlags(stage_flags);
+		}
+		auto get_descriptor_set_layout_binding() {
+			return m_binding;
+		}
+	private:
+		vk::DescriptorSetLayoutBinding m_binding;
+	};
+	template<uint32_t Binding, class T>
+	class set_binding : public T {
+	public:
+		auto get_binding() {
+			return Binding;
+		}
+	};
+	template<uint32_t Descriptor_count, class T> 
+	class set_descriptor_count : public T {
+	public:
+		auto get_descriptor_count() {
+			return Descriptor_count;
+		}
+	};
+	template<vk::DescriptorType Descriptor_type, class T>
+	class set_descriptor_type : public T {
+	public:
+		auto get_descriptor_type() {
+			return Descriptor_type;
+		}
+	};
+	template<class T>
+	class add_empty_immutable_samplers : public T {
+	public:
+		auto get_immutable_samplers() {
+			return std::vector<vk::Sampler>{};
+		}
+	};
 }
 
 namespace windows_helper {
@@ -1000,6 +1184,11 @@ int main() {
 			add_swapchain_command_buffers<
 			add_command_pool<
 			add_queue<
+			add_graphics_pipeline<
+			add_pipeline_layout<
+			add_pipeline_color_blend_state_create_info<
+			disable_pipeline_attachment_color_blend<0, // disable index 0 attachment
+			add_pipeline_color_blend_attachment_states<1, // 1 attachment
 			add_images_memories<
 			add_images<
 			set_image_samples<vk::SampleCountFlagBits::e1,
@@ -1039,7 +1228,7 @@ int main() {
 			set_window_style<WS_OVERLAPPEDWINDOW,
 			add_window_class<
 			empty_class
-			>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+			>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 		{};
 	}
 	catch (std::exception& e) {
