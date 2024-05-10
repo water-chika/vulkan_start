@@ -889,11 +889,26 @@ namespace vulkan_hpp_helper {
 	private:
 		vk::Pipeline m_pipeline;
 	};
+	template<vk::PrimitiveTopology Topology, class T>
+	class set_pipeline_input_topology : public T {
+	public:
+		auto get_pipeline_input_assembly_state_create_info() {
+			return vk::PipelineInputAssemblyStateCreateInfo{}
+			.setTopology(Topology);
+		}
+	};
+	template<class T>
+	class disable_pipeline_dynamic : public T {
+	public:
+		auto get_pipeline_dynamic_state_create_info() {
+			return vk::PipelineDynamicStateCreateInfo{};
+		}
+	};
 	template<class T>
 	class disable_pipeline_depth_stencil : public T {
 	public:
 		auto get_pipeline_depth_stencil_state_create_info() {
-			return vk::PipelineDepthStencilStateCreateInfo{}
+			return vk::PipelineDepthStencilStateCreateInfo{};
 		}
 	};
 	template<class T>
@@ -1186,6 +1201,9 @@ int main() {
 			add_queue<
 			add_graphics_pipeline<
 			add_pipeline_layout<
+			set_pipeline_input_topology<vk::PrimitiveTopology::eTriangleList,
+			disable_pipeline_dynamic<
+			disable_pipeline_depth_stencil<
 			add_pipeline_color_blend_state_create_info<
 			disable_pipeline_attachment_color_blend<0, // disable index 0 attachment
 			add_pipeline_color_blend_attachment_states<1, // 1 attachment
@@ -1228,7 +1246,7 @@ int main() {
 			set_window_style<WS_OVERLAPPEDWINDOW,
 			add_window_class<
 			empty_class
-			>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+			>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 		{};
 	}
 	catch (std::exception& e) {
