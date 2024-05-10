@@ -889,6 +889,105 @@ namespace vulkan_hpp_helper {
 	private:
 		vk::Pipeline m_pipeline;
 	};
+	template< class T>
+	class add_pipeline_stage : public T {
+	public:
+		using parent = T;
+		auto get_pipeline_stages() {
+			auto stages = parent::get_pipeline_stages();
+			vk::ShaderModule shader_module = parent::get_shader_module();
+			std::string entry_name = parent::get_shader_entry_name();
+			vk::ShaderStageFlagBits stage = parent::get_shadeer_stage();
+			stages.emplace_back(vk::PipelineShaderStageCreateInfo{}
+				.setModule(shader_module)
+				.setPName(entry_name.data())
+				.setStage(stage));
+			return stages;
+		}
+	};
+	template<class T>
+	class add_shader_module : public T {
+	public:
+		using parent = T;
+		add_shader_module() {
+			vk::Device device = parent::get_device();
+			auto code = parent::get_spirv_code();
+			m_module = device.createShaderModule(
+				vk::ShaderModuleCreateInfo{}
+				.setCode(code)
+			);
+		}
+		~add_shader_module() {
+			vk::Device device = parent::get_device();
+			device.destroyShaderModule(m_module);
+		}
+		auto get_shader_module() {
+			return m_module;
+		}
+	private:
+		vk::ShaderModule m_module;
+	};
+	template<class T>
+	class add_spirv_code : public T {
+	public:
+		using parent = T;
+		add_spirv_code() {
+			std::byte* ptr = parent::get_pointer();
+			std::uint32_t size = parent::get_size_in_bytes();
+			m_code = std::span{ ptr, size };
+		}
+		auto get_spirv_code() {
+			m_code;
+		}
+	private:
+		std::span<std::byte> m_code;
+	};
+	template<class T>
+	class add_file_mapping : public T {
+	public:
+		using parent = T;
+		add_file_mapping() {
+			uint64_t maximum_size;
+			HANDLE file = parent::get_file();
+			LPSECURITY_ATTRIBUTES security_attributes = parent::get_security_attributes();
+			DWORD protect = parent::get_protect();
+			std::string name = parent::get_name();
+			m_mapping = CreateFileMapping(file, security_attributes, protect,
+				static_cast<uint32_t>(maximum_size >> 32), static_cast<uint32_t>(maximum_size),
+				name.data());
+		}
+		~add_file_mapping() {
+			CloseHandle(m_mapping);
+		}
+		auto get_mapping() {
+			return m_mapping;
+		}
+	private:
+		HANDLE m_mapping;
+	};
+	template<class T>
+	class add_empty_pipeline_stages : public T {
+	public:
+		auto get_pipeline_stages() {
+			return std::vector<vk::PipelineShaderStageCreateInfo>{};
+		}
+	};
+	template<vk::PolygonMode Polygon_mode, class T>
+	class set_pipeline_rasterization_polygon_mode : public T {
+	public:
+		auto get_pipeline_rasterization_state_create_info() {
+			return vk::PipelineRasterizationStateCreateInfo{}
+			.setPolygonMode(Polygon_mode);
+		}
+	};
+	template<class T>
+	class disable_pipeline_multisample : public T {
+	public:
+		auto get_pipeline_multisample_state_create_info() {
+			return vk::PipelineMultisampleStateCreateInfo{}
+			.setRasterizationSamples(vk::SampleCountFlagBits::e1);
+		}
+	};
 	template<vk::PrimitiveTopology Topology, class T>
 	class set_pipeline_input_topology : public T {
 	public:
@@ -1201,6 +1300,8 @@ int main() {
 			add_queue<
 			add_graphics_pipeline<
 			add_pipeline_layout<
+			set_pipeline_rasterization_polygon_mode<vk::PolygonMode::eFill,
+			disable_pipeline_multisample<
 			set_pipeline_input_topology<vk::PrimitiveTopology::eTriangleList,
 			disable_pipeline_dynamic<
 			disable_pipeline_depth_stencil<
@@ -1246,7 +1347,7 @@ int main() {
 			set_window_style<WS_OVERLAPPEDWINDOW,
 			add_window_class<
 			empty_class
-			>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+			>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 		{};
 	}
 	catch (std::exception& e) {
