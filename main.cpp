@@ -101,10 +101,26 @@ namespace vulkan_hpp_helper {
 		}
 	};
 	template<class T>
+	class add_recreate_surface_for_swapchain : public T {
+	public:
+		using parent = T;
+		void recreate_surface() {
+			parent::destroy_swapchain();
+			parent::recreate_surface();
+			parent::create_swapchain();
+		}
+	};
+	template<class T>
 	class add_swapchain : public T {
 	public:
 		using parent = T;
 		add_swapchain() {
+			create_swapchain();
+		}
+		~add_swapchain() {
+			destroy_swapchain();
+		}
+		void create_swapchain() {
 			vk::Device device = parent::get_device();
 			vk::SurfaceKHR surface = parent::get_surface();
 			vk::Format format = parent::get_swapchain_image_format();
@@ -117,12 +133,12 @@ namespace vulkan_hpp_helper {
 				.setImageExtent(swapchain_image_extent)
 				.setImageFormat(format)
 				.setImageColorSpace(vk::ColorSpaceKHR::eSrgbNonlinear)
-				.setImageUsage(vk::ImageUsageFlagBits::eTransferDst|vk::ImageUsageFlagBits::eColorAttachment)
+				.setImageUsage(vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eColorAttachment)
 				.setImageArrayLayers(1)
 				.setSurface(surface)
 			);
 		}
-		~add_swapchain() {
+		void destroy_swapchain() {
 			vk::Device device = parent::get_device();
 			device.destroySwapchainKHR(m_swapchain);
 		}
@@ -133,14 +149,30 @@ namespace vulkan_hpp_helper {
 		vk::SwapchainKHR m_swapchain;
 	};
 	template<class T>
+	class add_recreate_surface_for_swapchain_images_views : public T {
+	public:
+		using parent = T;
+		void recreate_surface() {
+			parent::destroy_swapchain_images_views();
+			parent::recreate_surface();
+			parent::create_swapchain_images_views();
+		}
+	};
+	template<class T>
 	class add_swapchain_images_views : public T {
 	public:
 		using parent = T;
 		add_swapchain_images_views() {
+			create_swapchain_images_views();
+		}
+		~add_swapchain_images_views() {
+			destroy_swapchain_images_views();
+		}
+		void create_swapchain_images_views() {
 			vk::Device device = parent::get_device();
 			auto images = parent::get_swapchain_images();
 			vk::Format format = parent::get_swapchain_image_format();
-			
+
 			m_views.resize(images.size());
 			std::ranges::transform(
 				images,
@@ -161,7 +193,7 @@ namespace vulkan_hpp_helper {
 				}
 			);
 		}
-		~add_swapchain_images_views() {
+		void destroy_swapchain_images_views() {
 			vk::Device device = parent::get_device();
 			std::ranges::for_each(
 				m_views,
@@ -177,10 +209,22 @@ namespace vulkan_hpp_helper {
 		std::vector<vk::ImageView> m_views;
 	};
 	template<class T>
+	class add_recreate_surface_for_swapchain_images : public T {
+	public:
+		using parent = T;
+		void recreate_surface() {
+			parent::recreate_surface();
+			parent::flush_swapchain_images();
+		}
+	};
+	template<class T>
 	class add_swapchain_images : public T {
 	public:
 		using parent = T;
 		add_swapchain_images() {
+			flush_swapchain_images();
+		}
+		void flush_swapchain_images() {
 			vk::Device device = parent::get_device();
 			vk::SwapchainKHR swapchain = parent::get_swapchain();
 			m_images = device.getSwapchainImagesKHR(swapchain);
@@ -264,10 +308,26 @@ namespace vulkan_hpp_helper {
 		}
 	};
 	template<class T>
+	class add_recreate_surface_for_images : public T {
+	public:
+		using parent = T;
+		void recreate_surface() {
+			parent::destroy_images();
+			parent::recreate_surface();
+			parent::create_images();
+		}
+	};
+	template<class T>
 	class add_images : public T {
 	public:
 		using parent = T;
 		add_images() {
+			create_images();
+		}
+		~add_images() {
+			destroy_images();
+		}
+		void create_images() {
 			vk::Device device = parent::get_device();
 			vk::Extent3D extent = parent::get_image_extent();
 			vk::Format format = parent::get_image_format();
@@ -301,7 +361,7 @@ namespace vulkan_hpp_helper {
 				}
 			);
 		}
-		~add_images() {
+		void destroy_images() {
 			vk::Device device = parent::get_device();
 			std::ranges::for_each(
 				m_images,
@@ -386,10 +446,26 @@ namespace vulkan_hpp_helper {
 		vk::DeviceMemory m_memory;
 	};
 	template<class T>
+	class add_recreate_surface_for_images_memories : public T {
+	public:
+		using parent = T;
+		void recreate_surface() {
+			parent::destroy_images_memories();
+			parent::recreate_surface();
+			parent::create_images_memories();
+		}
+	};
+	template<class T>
 	class add_images_memories : public T {
 	public:
 		using parent = T;
 		add_images_memories() {
+			create_images_memories();
+		}
+		~add_images_memories() {
+			destroy_images_memories();
+		}
+		void create_images_memories() {
 			vk::Device device = parent::get_device();
 			auto images = parent::get_images();
 			vk::MemoryPropertyFlags memory_properties = parent::get_image_memory_properties();
@@ -410,7 +486,7 @@ namespace vulkan_hpp_helper {
 					return memory;
 				});
 		}
-		~add_images_memories() {
+		void destroy_images_memories() {
 			vk::Device device = parent::get_device();
 			std::ranges::for_each(m_memories,
 				[device](vk::DeviceMemory memory) {
@@ -521,10 +597,26 @@ namespace vulkan_hpp_helper {
 		vk::CommandBuffer m_buffer;
 	};
 	template<class T>
+	class add_recreate_surface_for : public T {
+	public:
+		using parent = T;
+		void recreate_surface() {
+			parent::destroy();
+			parent::recreate_surface();
+			parent::create();
+		}
+	};
+	template<class T>
 	class add_swapchain_command_buffers : public T {
 	public:
 		using parent = T;
 		add_swapchain_command_buffers() {
+			create();
+		}
+		~add_swapchain_command_buffers() {
+			destroy();
+		}
+		void create() {
 			vk::Device device = parent::get_device();
 			vk::CommandPool pool = parent::get_command_pool();
 			uint32_t swapchain_image_count = parent::get_swapchain_images().size();
@@ -534,7 +626,7 @@ namespace vulkan_hpp_helper {
 				.setCommandBufferCount(swapchain_image_count)
 			);
 		}
-		~add_swapchain_command_buffers() {
+		void destroy() {
 			vk::Device device = parent::get_device();
 			vk::CommandPool pool = parent::get_command_pool();
 			device.freeCommandBuffers(pool, m_buffers);
@@ -570,10 +662,26 @@ namespace vulkan_hpp_helper {
 		}
 	};
 	template<class T>
+	class add_recreate_surface_for_framebuffers : public T {
+	public:
+		using parent = T;
+		void recreate_surface() {
+			parent::destroy_framebuffers();
+			parent::recreate_surface();
+			parent::create_framebuffers();
+		}
+	};
+	template<class T>
 	class add_framebuffers : public T {
 	public:
 		using parent = T;
 		add_framebuffers() {
+			create_framebuffers();
+		}
+		~add_framebuffers() {
+			destroy_framebuffers();
+		}
+		void create_framebuffers() {
 			vk::Device device = parent::get_device();
 			vk::RenderPass render_pass = parent::get_render_pass();
 			auto extent = parent::get_swapchain_image_extent();
@@ -593,7 +701,7 @@ namespace vulkan_hpp_helper {
 					);
 				});
 		}
-		~add_framebuffers() {
+		void destroy_framebuffers() {
 			vk::Device device = parent::get_device();
 			std::ranges::for_each(m_framebuffers,
 				[device](auto framebuffer) {
@@ -611,6 +719,9 @@ namespace vulkan_hpp_helper {
 	public:
 		using parent = T;
 		record_swapchain_command_buffers() {
+			create();
+		}
+		void create() {
 			auto buffers = parent::get_swapchain_command_buffers();
 			auto swapchain_images = parent::get_swapchain_images();
 			auto queue_family_index = parent::get_queue_family_index();
@@ -805,6 +916,9 @@ namespace vulkan_hpp_helper {
 				buffer.end();
 			}
 		}
+		void destroy() {
+
+		}
 	};
 	template<class T>
 	class rename_vertex_buffer_to_buffer : public T {
@@ -905,6 +1019,7 @@ namespace vulkan_hpp_helper {
 			vk::SwapchainKHR swapchain = parent::get_swapchain();
 			vk::Queue queue = parent::get_queue();
 			vk::Semaphore acquire_image_semaphore = parent::get_acquire_next_image_semaphore();
+			bool need_recreate_surface = false;
 			
 			
 			auto [res, index] = device.acquireNextImage2KHR(
@@ -914,7 +1029,10 @@ namespace vulkan_hpp_helper {
 				.setTimeout(UINT64_MAX)
 				.setDeviceMask(1)
 			);
-			if (res != vk::Result::eSuccess) {
+			if (res == vk::Result::eSuboptimalKHR) {
+				need_recreate_surface = true;
+			}
+			else if (res != vk::Result::eSuccess) {
 				throw std::runtime_error{ "acquire next image != success" };
 			}
 			parent::free_acquire_next_image_semaphore(index);
@@ -950,9 +1068,16 @@ namespace vulkan_hpp_helper {
 					.setSwapchains(swapchain)
 					.setWaitSemaphores(draw_image_semaphore)
 				);
-				if (res != vk::Result::eSuccess) {
+				if (res == vk::Result::eSuboptimalKHR) {
+					need_recreate_surface = true;
+				}
+				else if (res != vk::Result::eSuccess) {
 					throw std::runtime_error{ "present return != success" };
 				}
+			}
+			if (need_recreate_surface) {
+				queue.waitIdle();
+				parent::recreate_surface();
 			}
 		}
 		~add_draw() {
@@ -1093,10 +1218,26 @@ namespace vulkan_hpp_helper {
 		std::vector<vk::Fence> m_fences;
 	};
 	template<class T>
+	class add_recreate_surface_for_pipeline : public T {
+	public:
+		using parent = T;
+		void recreate_surface() {
+			parent::destroy_pipeline();
+			parent::recreate_surface();
+			parent::create_pipeline();
+		}
+	};
+	template<class T>
 	class add_graphics_pipeline : public T {
 	public:
 		using parent = T;
 		add_graphics_pipeline() {
+			create_pipeline();
+		}
+		~add_graphics_pipeline() {
+			destroy_pipeline();
+		}
+		void create_pipeline() {
 			vk::Device device = parent::get_device();
 			vk::PipelineLayout pipeline_layout = parent::get_pipeline_layout();
 			vk::PipelineColorBlendStateCreateInfo color_blend_state = parent::get_pipeline_color_blend_state_create_info();
@@ -1118,7 +1259,7 @@ namespace vulkan_hpp_helper {
 			vk::RenderPass render_pass =
 				parent::get_render_pass();
 			uint32_t subpass = parent::get_subpass();
-			
+
 			auto [res, pipeline] = device.createGraphicsPipeline(
 				{},
 				vk::GraphicsPipelineCreateInfo{}
@@ -1135,14 +1276,14 @@ namespace vulkan_hpp_helper {
 				.setPViewportState(&viewport_state)
 				.setRenderPass(render_pass)
 				.setSubpass(subpass)
-				
+
 			);
 			if (res != vk::Result::eSuccess) {
 				throw std::runtime_error{ "failed to create graphics pipeline" };
 			}
 			m_pipeline = pipeline;
 		}
-		~add_graphics_pipeline() {
+		void destroy_pipeline() {
 			vk::Device device = parent::get_device();
 			device.destroyPipeline(m_pipeline);
 		}
@@ -1287,10 +1428,22 @@ namespace vulkan_hpp_helper {
 		}
 	};
 	template<class T>
+	class add_recreate_surface_for_cache_surface_capabilites : public T {
+	public:
+		using parent = T;
+		void recreate_surface() {
+			parent::recreate_surface();
+			parent::flush_surface_capabilities_cache();
+		}
+	};
+	template<class T>
 	class cache_surface_capabilities : public T {
 	public:
 		using parent = T;
 		cache_surface_capabilities() {
+			flush_surface_capabilities_cache();
+		}
+		void flush_surface_capabilities_cache() {
 			vk::PhysicalDevice physical_device = parent::get_physical_device();
 			vk::SurfaceKHR surface = parent::get_surface();
 			m_capabilities = physical_device.getSurfaceCapabilitiesKHR(surface);
@@ -1300,6 +1453,28 @@ namespace vulkan_hpp_helper {
 		}
 	private:
 		vk::SurfaceCapabilitiesKHR m_capabilities;
+	};
+	template<class T>
+	class test_physical_device_support_surface : public T {
+	public:
+		using parent = T;
+		test_physical_device_support_surface() {
+			create();
+		}
+		void create() {
+			vk::PhysicalDevice physical_device = parent::get_physical_device();
+			vk::SurfaceKHR surface = parent::get_surface();
+			uint32_t queue_family_index = parent::get_queue_family_index();
+			m_support = physical_device.getSurfaceSupportKHR(queue_family_index, surface);
+		}
+		void destroy() {
+
+		}
+		auto get_physical_device_support_surface() {
+			return m_support;
+		}
+	private:
+		bool m_support;
 	};
 	template<class T>
 	class add_empty_scissors : public T {
@@ -1830,6 +2005,15 @@ namespace vulkan_hpp_helper {
 			return std::vector<vk::Sampler>{};
 		}
 	};
+	template<class T>
+	class add_recreate_surface : public T {
+	public:
+		using parent = T;
+		void recreate_surface() {
+			parent::destroy_surface();
+			parent::create_surface();
+		}
+	};
 }
 
 namespace windows_helper {
@@ -1936,28 +2120,34 @@ namespace windows_helper {
 		using parent = T;
 		add_window_loop() {
 			MSG msg = { };
-			while (GetMessage(&msg, NULL, 0, 0) > 0)
+			while (msg.message != WM_QUIT)
 			{
-				parent::draw();
-				TranslateMessage(&msg);
-				DispatchMessage(&msg);
+				if (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE)) {
+					TranslateMessage(&msg);
+					DispatchMessage(&msg);
+				}
+				else {
+					parent::draw();
+				}
 			}
 		}
 	};
+
 }
 
 namespace vulkan_windows_helper {
-	template<class T>
-	class add_create_win32_surface_khr : public T {
-	public:
-	private:
-		
-	};
+
 	template<class T>
 	class add_windows_surface : public T {
 	public:
 		using parent = T;
 		add_windows_surface() {
+			create_surface();
+		}
+		~add_windows_surface() {
+			destroy_surface();
+		}
+		void create_surface() {
 			vk::Instance instance = parent::get_instance();
 			m_surface = instance.createWin32SurfaceKHR(
 				vk::Win32SurfaceCreateInfoKHR{}
@@ -1965,7 +2155,7 @@ namespace vulkan_windows_helper {
 				.setHwnd(parent::get_window())
 			);
 		}
-		~add_windows_surface() {
+		void destroy_surface() {
 			vk::Instance instance = parent::get_instance();
 			instance.destroySurfaceKHR(m_surface);
 		}
@@ -1987,14 +2177,17 @@ int main() {
 			add_acquire_next_image_semaphores<
 			add_acquire_next_image_semaphore_fences<
 			add_draw_semaphores<
+			add_recreate_surface_for<
 			record_swapchain_command_buffers<
 			add_get_format_clear_color_value_type<
+			add_recreate_surface_for<
 			add_swapchain_command_buffers<
 			add_command_pool<
 			add_queue<
 			add_vertex_buffer_memory<
 			add_vertex_buffer<
 			add_vertex_buffer_data<
+			add_recreate_surface_for_pipeline<
 			add_graphics_pipeline<
 			add_pipeline_vertex_input_state<
 			add_vertex_binding_description<
@@ -2005,6 +2198,7 @@ int main() {
 			set_stride<sizeof(float)*2,
 			set_input_rate<vk::VertexInputRate::eVertex,
 			set_subpass<0,
+			add_recreate_surface_for_framebuffers<
 			add_framebuffers <
 			add_render_pass<
 			add_subpasses<
@@ -2016,9 +2210,6 @@ int main() {
 			add_scissor_equal_surface_rect <
 			add_empty_scissors <
 			add_viewport_equal_swapchain_image_rect<
-			set_viewport_x<0.0f,set_viewport_width<155.0f,
-			set_viewport_y<0.0f, set_viewport_height<155.0f,
-			set_viewport_min_depth<0.0f, set_viewport_max_depth<1.0f,
 			add_empty_viewports<
 			set_tessellation_patch_control_point_count<1,
 			add_pipeline_stage<
@@ -2052,13 +2243,17 @@ int main() {
 			add_pipeline_color_blend_state_create_info<
 			disable_pipeline_attachment_color_blend<0, // disable index 0 attachment
 			add_pipeline_color_blend_attachment_states<1, // 1 attachment
+			add_recreate_surface_for_images_memories <
 			add_images_memories<
+			add_recreate_surface_for_images <
 			add_images<
 			set_image_samples<vk::SampleCountFlagBits::e1,
 			rename_images<
+			add_recreate_surface_for_images_memories<
 			add_images_memories<
 			add_image_memory_property<vk::MemoryPropertyFlagBits::eDeviceLocal,
 			add_empty_image_memory_properties<
+			add_recreate_surface_for_images<
 			add_images<
 			set_image_tiling<vk::ImageTiling::eOptimal,
 			add_image_usage<vk::ImageUsageFlagBits::eTransferDst,
@@ -2069,19 +2264,26 @@ int main() {
 			add_image_extent_equal_swapchain_image_extent<
 			add_image_type<vk::ImageType::e2D,
 			set_image_samples<vk::SampleCountFlagBits::e8,
+			add_recreate_surface_for_swapchain_images_views<
 			add_swapchain_images_views<
+			add_recreate_surface_for_swapchain_images<
 			add_swapchain_images<
+			add_recreate_surface_for_swapchain<
 			add_swapchain<
 			add_swapchain_image_extent_equal_surface_current_extent<
 			add_swapchain_image_format<
 			add_device<
-			add_queue_family_index<
 			add_swapchain_extension <
 			add_empty_extensions<
 			add_find_properties<
 			cache_physical_device_memory_properties<
+			add_recreate_surface_for_cache_surface_capabilites<
 			cache_surface_capabilities<
+			add_recreate_surface_for<
+			test_physical_device_support_surface<
+			add_queue_family_index <
 			add_physical_device<
+			add_recreate_surface<
 			vulkan_windows_helper::add_windows_surface<
 			add_instance<
 			add_win32_surface_extension<
@@ -2095,7 +2297,7 @@ int main() {
 			empty_class
 			>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 			>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-			>>>>>>>>>>>>>>>>>>>>>>>>>>>
+			>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 		{};
 	}
 	catch (std::exception& e) {
