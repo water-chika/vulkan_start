@@ -325,6 +325,67 @@ namespace vulkan_hpp_helper {
 		}
 	};
 	template<class T>
+	class add_image_memory : public T {
+	public:
+		using parent = T;
+		add_image_memory() {
+			vk::Device device = parent::get_device();
+			vk::Image image = parent::get_image();
+			vk::MemoryPropertyFlags memory_properties = parent::get_image_memory_properties();
+
+			auto memory_requirements =
+				device.getImageMemoryRequirements(
+				image
+			);
+			uint32_t memory_type_index = parent::find_properties(memory_requirements.memoryTypeBits, memory_properties);
+			auto memory = device.allocateMemory(
+				vk::MemoryAllocateInfo{}
+				.setAllocationSize(memory_requirements.size)
+				.setMemoryTypeIndex(memory_type_index)
+			);
+			device.bindImageMemory(image, memory, 0);
+			m_memory = memory;
+		}
+		~add_image_memory() {
+			vk::Device device = parent::get_device();
+			device.freeMemory(m_memory);
+		}
+	private:
+		vk::DeviceMemory m_memory;
+	};
+	template<class T>
+	class add_buffer_memory : public T {
+	public:
+		using parent = T;
+		add_buffer_memory() {
+			vk::Device device = parent::get_device();
+			vk::Buffer buffer = parent::get_buffer();
+			vk::MemoryPropertyFlags memory_properties = parent::get_buffer_memory_properties();
+
+			auto memory_requirements =
+				device.getBufferMemoryRequirements(
+					buffer
+				);
+			uint32_t memory_type_index = parent::find_properties(memory_requirements.memoryTypeBits, memory_properties);
+			auto memory = device.allocateMemory(
+				vk::MemoryAllocateInfo{}
+				.setAllocationSize(memory_requirements.size)
+				.setMemoryTypeIndex(memory_type_index)
+			);
+			device.bindBufferMemory(buffer, memory, 0);
+			m_memory = memory;
+		}
+		~add_buffer_memory() {
+			vk::Device device = parent::get_device();
+			device.freeMemory(m_memory);
+		}
+		auto get_buffer_memory() {
+			return m_memory;
+		}
+	private:
+		vk::DeviceMemory m_memory;
+	};
+	template<class T>
 	class add_images_memories : public T {
 	public:
 		using parent = T;
@@ -694,14 +755,14 @@ namespace vulkan_hpp_helper {
 					)
 				);
 				vk::Offset3D image_end{ static_cast<int32_t>(image_extent.width), static_cast<int32_t>(image_extent.height), static_cast<int32_t>(image_extent.depth) };
-				buffer.blitImage(unsampled_image, vk::ImageLayout::eTransferSrcOptimal, swapchain_image, vk::ImageLayout::eTransferDstOptimal,
+				/*buffer.blitImage(unsampled_image, vk::ImageLayout::eTransferSrcOptimal, swapchain_image, vk::ImageLayout::eTransferDstOptimal,
 					vk::ImageBlit{}
 					.setSrcSubresource(vk::ImageSubresourceLayers{}.setLayerCount(1).setAspectMask(vk::ImageAspectFlagBits::eColor))
 					.setDstSubresource(vk::ImageSubresourceLayers{}.setLayerCount(1).setAspectMask(vk::ImageAspectFlagBits::eColor))
 					.setSrcOffsets(std::array { vk::Offset3D{ 0,0,0 }, image_end})
 					.setDstOffsets(std::array{ vk::Offset3D{ 0,0,0 }, image_end}),
 					vk::Filter::eNearest
-				);
+				);*/
 				vk::RenderPass render_pass = parent::get_render_pass();
 
 				vk::Extent2D swapchain_image_extent = parent::get_swapchain_image_extent();
@@ -724,17 +785,116 @@ namespace vulkan_hpp_helper {
 					throw std::runtime_error{ "unsupported clear color value type" };
 				}
 				vk::ClearColorValue clear_color_value{ clear_color_values[clear_color_value_type] };
-				buffer.clearAttachments(
+				/*buffer.clearAttachments(
 					vk::ClearAttachment{}.setAspectMask(vk::ImageAspectFlagBits::eColor)
 					.setClearValue(vk::ClearValue{}.setColor(clear_color_value)),
 					vk::ClearRect{}
 				.setLayerCount(1)
 					.setRect(vk::Rect2D{}
-				.setExtent(swapchain_image_extent)));
+				.setExtent(swapchain_image_extent)));*/
+				vk::Pipeline pipeline = parent::get_pipeline();
+				buffer.bindPipeline(
+					vk::PipelineBindPoint::eGraphics,
+					pipeline
+				);
+				vk::Buffer vertex_buffer = parent::get_vertex_buffer();
+				buffer.bindVertexBuffers(0,
+					vertex_buffer, vk::DeviceSize{ 0 });
+				buffer.draw(3, 1, 0, 0);
 				buffer.endRenderPass();
 				buffer.end();
 			}
 		}
+	};
+	template<class T>
+	class rename_vertex_buffer_to_buffer : public T {
+	public:
+		using parent = T;
+		auto get_buffer() {
+			return parent::get_vertex_buffer();
+		}
+	};
+	template<class T>
+	class set_buffer_memory_properties : public T {
+	public:
+		using parent = T;
+		auto get_buffer_memory_properties() {
+			return vk::MemoryPropertyFlagBits::eHostVisible;
+		}
+	};
+	template<class T>
+	class rename_vertex_buffer_data_to_buffer_data : public T {
+	public:
+		using parent = T;
+		auto get_buffer_data() {
+			return parent::get_vertex_buffer_data();
+		}
+	};
+	template<class T>
+	class copy_buffer_data : public T {
+	public:
+		using parent = T;
+		copy_buffer_data() {
+			vk::Device device = parent::get_device();
+			vk::DeviceMemory memory = parent::get_buffer_memory();
+			auto data = parent::get_buffer_data();
+			void* ptr = device.mapMemory(memory, 0, vk::WholeSize);
+			memcpy(ptr, data.data(), data.size() * sizeof(data[0]));
+			device.unmapMemory(memory);
+		}
+	};
+	template<class T>
+	class add_vertex_buffer_memory :
+		public
+		copy_buffer_data<
+		rename_vertex_buffer_data_to_buffer_data<
+		add_buffer_memory<
+		rename_vertex_buffer_to_buffer<
+		set_buffer_memory_properties<
+		T>>>>>
+	{
+	};
+	template<class T>
+	class add_vertex_buffer_data : public T {
+	public:
+		auto get_vertex_buffer_size() {
+			return m_data.size() * sizeof(m_data[0]);
+		}
+		auto get_vertex_buffer_data() {
+			return m_data;
+		}
+	private:
+		static constexpr auto m_data = std::array{
+			-0.5f, -0.5f,
+						0.0f, 0.0f,
+			0.5f, -0.5f,
+
+		};
+	};
+	template<class T>
+	class add_vertex_buffer : public T {
+	public:
+		using parent = T;
+		add_vertex_buffer() {
+			vk::Device device = parent::get_device();
+			uint32_t queue_family_index = parent::get_queue_family_index();
+			vk::DeviceSize size = parent::get_vertex_buffer_size();
+			m_buffer = device.createBuffer(
+				vk::BufferCreateInfo{}
+				.setQueueFamilyIndices(queue_family_index)
+				.setSize(size)
+				.setUsage(vk::BufferUsageFlagBits::eVertexBuffer)
+			);
+		}
+		~add_vertex_buffer() {
+			vk::Device device = parent::get_device();
+			device.destroyBuffer(m_buffer);
+		}
+		auto get_vertex_buffer() {
+			return m_buffer;
+		}
+	private:
+		vk::Buffer m_buffer;
 	};
 	template<class T>
 	class add_draw : public T{
@@ -975,6 +1135,7 @@ namespace vulkan_hpp_helper {
 				.setPViewportState(&viewport_state)
 				.setRenderPass(render_pass)
 				.setSubpass(subpass)
+				
 			);
 			if (res != vk::Result::eSuccess) {
 				throw std::runtime_error{ "failed to create graphics pipeline" };
@@ -1035,12 +1196,12 @@ namespace vulkan_hpp_helper {
 			auto depends = parent::get_subpass_dependencies();
 			depends.emplace_back(
 				vk::SubpassDependency{}
-				.setSrcSubpass(0)
-				.setDstSubpass(vk::SubpassExternal)
+				.setSrcSubpass(vk::SubpassExternal)
+				.setDstSubpass(0)
 				.setSrcAccessMask(vk::AccessFlagBits::eColorAttachmentWrite)
-				.setDstAccessMask(vk::AccessFlagBits::eTransferRead)
+				.setDstAccessMask(vk::AccessFlagBits::eColorAttachmentWrite | vk::AccessFlagBits::eColorAttachmentRead)
 				.setSrcStageMask(vk::PipelineStageFlagBits::eColorAttachmentOutput)
-				.setDstStageMask(vk::PipelineStageFlagBits::eTransfer)
+				.setDstStageMask(vk::PipelineStageFlagBits::eColorAttachmentOutput)
 			);
 			return depends;
 		}
@@ -1116,13 +1277,11 @@ namespace vulkan_hpp_helper {
 		auto get_scissors() {
 			vk::SurfaceCapabilitiesKHR surface_cap = parent::get_surface_capabilities();
 			auto scissors = parent::get_scissors();
-			auto end_point = vk::Offset2D{}
-				.setX(surface_cap.currentExtent.width)
-				.setY(surface_cap.currentExtent.height);
+
 			scissors.emplace_back(
 				vk::Rect2D{}
 				.setOffset({})
-				.setOffset(end_point)
+				.setExtent(surface_cap.currentExtent)
 			);
 			return scissors;
 		}
@@ -1169,6 +1328,23 @@ namespace vulkan_hpp_helper {
 				.setHeight(height)
 				.setMinDepth(min_depth)
 				.setMaxDepth(max_depth)
+			);
+			return viewports;
+		}
+	};
+	template<class T>
+	class add_viewport_equal_swapchain_image_rect : public T {
+	public:
+		using parent = T;
+		auto get_viewports() {
+			auto viewports = parent::get_viewports();
+			auto extent = parent::get_swapchain_image_extent();
+			viewports.emplace_back(
+				vk::Viewport{}
+				.setWidth(extent.width)
+				.setHeight(extent.height)
+				.setMinDepth(0)
+				.setMaxDepth(1)
 			);
 			return viewports;
 		}
@@ -1474,6 +1650,13 @@ namespace vulkan_hpp_helper {
 		}
 	};
 	template<class T>
+	class add_fragment_shader_path : public T {
+	public:
+		auto get_file_path() {
+			return std::filesystem::path{ "frag.spv" };
+		}
+	};
+	template<class T>
 	class add_empty_pipeline_stages : public T {
 	public:
 		auto get_pipeline_stages() {
@@ -1486,7 +1669,8 @@ namespace vulkan_hpp_helper {
 		auto get_pipeline_rasterization_state_create_info() {
 			return vk::PipelineRasterizationStateCreateInfo{}
 			.setPolygonMode(Polygon_mode)
-				.setLineWidth(1.0f);
+				.setLineWidth(1.0f)
+				.setCullMode(vk::CullModeFlagBits::eNone);
 		}
 	};
 	template<class T>
@@ -1516,7 +1700,9 @@ namespace vulkan_hpp_helper {
 	class disable_pipeline_depth_stencil : public T {
 	public:
 		auto get_pipeline_depth_stencil_state_create_info() {
-			return vk::PipelineDepthStencilStateCreateInfo{};
+			return vk::PipelineDepthStencilStateCreateInfo{}
+			.setDepthTestEnable(false)
+				.setDepthCompareOp(vk::CompareOp::eAlways);
 		}
 	};
 	template<class T>
@@ -1806,6 +1992,9 @@ int main() {
 			add_swapchain_command_buffers<
 			add_command_pool<
 			add_queue<
+			add_vertex_buffer_memory<
+			add_vertex_buffer<
+			add_vertex_buffer_data<
 			add_graphics_pipeline<
 			add_pipeline_vertex_input_state<
 			add_vertex_binding_description<
@@ -1826,15 +2015,14 @@ int main() {
 			add_pipeline_viewport_state<
 			add_scissor_equal_surface_rect <
 			add_empty_scissors <
-			add_viewport<
-			set_viewport_x<-1.0f,set_viewport_width<2.0f,
-			set_viewport_y<-1.0f, set_viewport_height<2.0f,
+			add_viewport_equal_swapchain_image_rect<
+			set_viewport_x<0.0f,set_viewport_width<155.0f,
+			set_viewport_y<0.0f, set_viewport_height<155.0f,
 			set_viewport_min_depth<0.0f, set_viewport_max_depth<1.0f,
 			add_empty_viewports<
 			set_tessellation_patch_control_point_count<1,
 			add_pipeline_stage<
 			set_shader_stage<vk::ShaderStageFlagBits::eVertex,
-			set_shader_entry_name_with_main<
 			add_shader_module<
 			add_spirv_code<
 			adapte_map_file_to_spirv_code<
@@ -1842,7 +2030,18 @@ int main() {
 			cache_file_size<
 			add_file_mapping<
 			add_file<
-			add_vertex_shader_path<
+			add_vertex_shader_path <
+			add_pipeline_stage<
+			set_shader_stage<vk::ShaderStageFlagBits::eFragment,
+			set_shader_entry_name_with_main <
+			add_shader_module<
+			add_spirv_code<
+			adapte_map_file_to_spirv_code<
+			map_file_mapping<
+			cache_file_size<
+			add_file_mapping<
+			add_file<
+			add_fragment_shader_path<
 			add_empty_pipeline_stages<
 			add_pipeline_layout<
 			set_pipeline_rasterization_polygon_mode<vk::PolygonMode::eFill,
@@ -1896,7 +2095,7 @@ int main() {
 			empty_class
 			>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 			>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-			>>>>>>>>>>>>>>
+			>>>>>>>>>>>>>>>>>>>>>>>>>>>
 		{};
 	}
 	catch (std::exception& e) {
