@@ -890,6 +890,26 @@ namespace vulkan_hpp_helper {
 	private:
 		vk::Pipeline m_pipeline;
 	};
+	template<class T>
+	class add_pipeline_vertex_input_state : public T {
+	public:
+		using parent = T;
+		auto get_pipeline_vertex_input_state_create_info() {
+			auto attribute_descriptions = parent::get_vertex_attribute_descriptions();
+			auto binding_descriptions = parent::get_vertex_binding_descriptions();
+			return vk::PipelineVertexInputStateCreateInfo{}
+				.setVertexAttributeDescriptions(attribute_descriptions)
+				.setVertexBindingDescriptions(binding_descriptions);
+		}
+	};
+	template<uint32_t Count, class T>
+	class set_tessellation_patch_control_point_count : public T {
+	public:
+		auto get_pipeline_tessellation_state_create_info() {
+			return vk::PipelineTessellationStateCreateInfo{}
+			.setPatchControlPoints(Count);
+		}
+	};
 	template< class T>
 	class add_pipeline_stage : public T {
 	public:
@@ -1314,6 +1334,8 @@ int main() {
 			add_command_pool<
 			add_queue<
 			add_graphics_pipeline<
+			add_pipeline_vertex_input_state<
+			set_tessellation_patch_control_point_count<1,
 			add_pipeline_stage<
 			set_shader_stage<vk::ShaderStageFlagBits::eVertex,
 			set_shader_entry_name_with_main<
@@ -1367,7 +1389,7 @@ int main() {
 			set_window_style<WS_OVERLAPPEDWINDOW,
 			add_window_class<
 			empty_class
-			>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+			>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 		{};
 	}
 	catch (std::exception& e) {
