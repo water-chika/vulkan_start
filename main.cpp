@@ -862,7 +862,7 @@ namespace vulkan_hpp_helper {
 				parent::get_render_pass();
 			uint32_t subpass = parent::get_subpass();
 			
-			m_pipeline = device.createGraphicsPipeline(
+			auto [res, pipeline] = device.createGraphicsPipeline(
 				{},
 				vk::GraphicsPipelineCreateInfo{}
 				.setLayout(pipeline_layout)
@@ -879,6 +879,10 @@ namespace vulkan_hpp_helper {
 				.setRenderPass(render_pass)
 				.setSubpass(subpass)
 			);
+			if (res != vk::Result::eSuccess) {
+				throw std::runtime_error{ "failed to create graphics pipeline" };
+			}
+			m_pipeline = pipeline;
 		}
 		~add_graphics_pipeline() {
 			vk::Device device = parent::get_device();
@@ -898,13 +902,79 @@ namespace vulkan_hpp_helper {
 		}
 	};
 	template<class T>
+	class add_empty_attachments : public T {
+	public:
+		auto get_attachments() {
+			return std::vector<vk::AttachmentDescription>{};
+		}
+	};
+	template<class T>
+	class add_attachment : public T {
+	public:
+		using parent = T;
+		auto get_attachments() {
+			auto attachments = parent::get_attachments();
+			vk::Format format = parent::get_swapchain_image_format();
+			vk::ImageLayout initial_layout = vk::ImageLayout::eUndefined;
+			vk::ImageLayout final_layout = vk::ImageLayout::ePresentSrcKHR;
+			attachments.emplace_back(
+				vk::AttachmentDescription{}
+				.setInitialLayout(initial_layout)
+				.setFinalLayout(final_layout)
+				.setFormat(format)
+				.setLoadOp(vk::AttachmentLoadOp::eDontCare)
+				.setStoreOp(vk::AttachmentStoreOp::eStore)
+				.setStencilLoadOp(vk::AttachmentLoadOp::eDontCare)
+				.setStencilStoreOp(vk::AttachmentStoreOp::eDontCare)
+			);
+			return attachments;
+		}
+	};
+	template<class T>
+	class add_subpass_dependency : public T {
+	public:
+		using parent = T;
+		auto get_subpass_dependencies() {
+			auto depends = parent::get_subpass_dependencies();
+			depends.emplace_back(
+				vk::SubpassDependency{}
+				.setSrcSubpass(0)
+				.setDstSubpass(vk::SubpassExternal)
+				.setSrcAccessMask(vk::AccessFlagBits::eColorAttachmentWrite)
+				.setDstAccessMask(vk::AccessFlagBits::eTransferRead)
+				.setSrcStageMask(vk::PipelineStageFlagBits::eColorAttachmentOutput)
+				.setDstStageMask(vk::PipelineStageFlagBits::eTransfer)
+			);
+			return depends;
+		}
+	};
+	template<class T>
+	class add_empty_subpass_dependencies : public T {
+	public:
+		auto get_subpass_dependencies() {
+			return std::vector<vk::SubpassDependency>{};
+		}
+	};
+	template<class T>
+	class add_subpasses : public T {
+	public:
+		auto get_subpasses() {
+			return vk::SubpassDescription{}
+			.setColorAttachments(
+				vk::AttachmentReference{}
+				.setAttachment(0)
+				.setLayout(vk::ImageLayout::eColorAttachmentOptimal)
+			);
+		}
+	};
+	template<class T>
 	class add_render_pass : public T {
 	public:
 		using parent = T;
 		add_render_pass() {
 			vk::Device device = parent::get_device();
 			auto attachments = parent::get_attachments();
-			auto dependencies = parent::get_dependencies();
+			auto dependencies = parent::get_subpass_dependencies();
 			auto subpasses = parent::get_subpasses();
 
 			device.createRenderPass(
@@ -946,11 +1016,15 @@ namespace vulkan_hpp_helper {
 		auto get_scissors() {
 			vk::SurfaceCapabilitiesKHR surface_cap = parent::get_surface_capabilities();
 			auto scissors = parent::get_scissors();
+			auto end_point = vk::Offset2D{}
+				.setX(surface_cap.currentExtent.width)
+				.setY(surface_cap.currentExtent.height);
 			scissors.emplace_back(
 				vk::Rect2D{}
 				.setOffset({})
-				.setOffset(surface_cap.currentExtent)
+				.setOffset(end_point)
 			);
+			return scissors;
 		}
 	};
 	template<class T>
@@ -981,8 +1055,8 @@ namespace vulkan_hpp_helper {
 		using parent = T;
 		auto get_viewports() {
 			auto viewports = parent::get_viewports();
-			float x = parent::get_x();
-			float y = parent::get_y();
+			float x = parent::get_viewport_x();
+			float y = parent::get_viewport_y();
 			float width = parent::get_viewport_width();
 			float height = parent::get_viewport_height();
 			float min_depth = parent::get_viewport_min_depth();
@@ -1058,6 +1132,59 @@ namespace vulkan_hpp_helper {
 			return vk::PipelineVertexInputStateCreateInfo{}
 				.setVertexAttributeDescriptions(attribute_descriptions)
 				.setVertexBindingDescriptions(binding_descriptions);
+		}
+	};
+	template<class T>
+	class add_empty_vertex_attribute_descriptions : public T {
+	public:
+		auto get_vertex_attribute_descriptions() {
+			return std::vector<vk::VertexInputAttributeDescription>{};
+		}
+	};
+	template<vk::VertexInputRate InputRate, class T>
+	class set_input_rate : public T {
+	public:
+		auto get_input_rate() {
+			return InputRate;
+		}
+	};
+	template<uint32_t Binding, class T>
+	class set_binding : public T {
+	public:
+		auto get_binding() {
+			return Binding;
+		}
+	};
+	template<uint32_t Stride, class T>
+	class set_stride : public T {
+	public:
+		auto get_stride() {
+			return Stride;
+		}
+	};
+	template<class T>
+	class add_vertex_binding_description : public T {
+	public:
+		using parent = T;
+		auto get_vertex_binding_descriptions() {
+			auto descs = parent::get_binding_descriptions();
+			uint32_t binding = parent::get_binding();
+			vk::VertexInputRate input_rate = parent::get_input_rate();
+			uint32_t stride = parent::get_stride();
+			descs.emplace_back(
+				vk::VertexInputBindingDescription{}
+				.setBinding(binding)
+				.setInputRate(input_rate)
+				.setStride(stride)
+			);
+			return descs;
+		}
+	};
+	template<class T>
+	class add_empty_binding_descriptions : public T {
+	public:
+		auto get_binding_descriptions() {
+			return std::vector<vk::VertexInputBindingDescription>{};
 		}
 	};
 	template<uint32_t Count, class T>
@@ -1300,13 +1427,6 @@ namespace vulkan_hpp_helper {
 	private:
 		vk::DescriptorSetLayoutBinding m_binding;
 	};
-	template<uint32_t Binding, class T>
-	class set_binding : public T {
-	public:
-		auto get_binding() {
-			return Binding;
-		}
-	};
 	template<uint32_t Descriptor_count, class T> 
 	class set_descriptor_count : public T {
 	public:
@@ -1492,15 +1612,28 @@ int main() {
 			add_command_pool<
 			add_queue<
 			add_graphics_pipeline<
+			add_pipeline_vertex_input_state<
+			add_vertex_binding_description<
+			add_empty_binding_descriptions<
+			add_empty_vertex_attribute_descriptions<
+			set_binding<0,
+			set_stride<sizeof(float)*2,
+			set_input_rate<vk::VertexInputRate::eVertex,
 			set_subpass<0,
 			add_render_pass<
+			add_subpasses<
+			add_subpass_dependency<
+			add_empty_subpass_dependencies<
+			add_attachment<
+			add_empty_attachments<
 			add_pipeline_viewport_state<
 			add_scissor_equal_surface_rect <
 			add_empty_scissors <
+			add_viewport<
 			set_viewport_x<-1.0f,set_viewport_width<2.0f,
 			set_viewport_y<-1.0f, set_viewport_height<2.0f,
 			set_viewport_min_depth<0.0f, set_viewport_max_depth<1.0f,
-			add_pipeline_vertex_input_state<
+			add_empty_viewports<
 			set_tessellation_patch_control_point_count<1,
 			add_pipeline_stage<
 			set_shader_stage<vk::ShaderStageFlagBits::eVertex,
@@ -1556,7 +1689,9 @@ int main() {
 			set_window_style<WS_OVERLAPPEDWINDOW,
 			add_window_class<
 			empty_class
-			>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+			>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+			>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+			>>>>>
 		{};
 	}
 	catch (std::exception& e) {
