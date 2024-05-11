@@ -117,7 +117,7 @@ namespace vulkan_hpp_helper {
 				.setImageExtent(swapchain_image_extent)
 				.setImageFormat(format)
 				.setImageColorSpace(vk::ColorSpaceKHR::eSrgbNonlinear)
-				.setImageUsage(vk::ImageUsageFlagBits::eTransferDst)
+				.setImageUsage(vk::ImageUsageFlagBits::eTransferDst|vk::ImageUsageFlagBits::eColorAttachment)
 				.setImageArrayLayers(1)
 				.setSurface(surface)
 			);
@@ -131,6 +131,50 @@ namespace vulkan_hpp_helper {
 		}
 	private:
 		vk::SwapchainKHR m_swapchain;
+	};
+	template<class T>
+	class add_swapchain_images_views : public T {
+	public:
+		using parent = T;
+		add_swapchain_images_views() {
+			vk::Device device = parent::get_device();
+			auto images = parent::get_swapchain_images();
+			vk::Format format = parent::get_swapchain_image_format();
+			
+			m_views.resize(images.size());
+			std::ranges::transform(
+				images,
+				m_views.begin(),
+				[device, format](auto image) {
+					return device.createImageView(
+						vk::ImageViewCreateInfo{}
+						.setImage(image)
+						.setFormat(format)
+						.setSubresourceRange(
+							vk::ImageSubresourceRange{}
+							.setAspectMask(vk::ImageAspectFlagBits::eColor)
+							.setLayerCount(1)
+							.setLevelCount(1)
+						)
+						.setViewType(vk::ImageViewType::e2D)
+					);
+				}
+			);
+		}
+		~add_swapchain_images_views() {
+			vk::Device device = parent::get_device();
+			std::ranges::for_each(
+				m_views,
+				[device](auto view) {
+					device.destroyImageView(view);
+				}
+			);
+		}
+		auto get_swapchain_image_views() {
+			return m_views;
+		}
+	private:
+		std::vector<vk::ImageView> m_views;
 	};
 	template<class T>
 	class add_swapchain_images : public T {
@@ -465,6 +509,43 @@ namespace vulkan_hpp_helper {
 		}
 	};
 	template<class T>
+	class add_framebuffers : public T {
+	public:
+		using parent = T;
+		add_framebuffers() {
+			vk::Device device = parent::get_device();
+			vk::RenderPass render_pass = parent::get_render_pass();
+			auto extent = parent::get_swapchain_image_extent();
+			uint32_t width = extent.width;
+			uint32_t height = extent.height;
+			auto swapchain_image_views = parent::get_swapchain_image_views();
+			m_framebuffers.resize(swapchain_image_views.size());
+			std::ranges::transform(swapchain_image_views, m_framebuffers.begin(),
+				[device, render_pass, extent, width, height](auto& image_view) {
+					return device.createFramebuffer(
+						vk::FramebufferCreateInfo{}
+						.setAttachments(image_view)
+						.setRenderPass(render_pass)
+						.setWidth(width)
+						.setHeight(height)
+						.setLayers(1)
+					);
+				});
+		}
+		~add_framebuffers() {
+			vk::Device device = parent::get_device();
+			std::ranges::for_each(m_framebuffers,
+				[device](auto framebuffer) {
+					device.destroyFramebuffer(framebuffer);
+				});
+		}
+		auto get_framebuffers() {
+			return m_framebuffers;
+		}
+	private:
+		std::vector<vk::Framebuffer> m_framebuffers;
+	};
+	template<class T>
 	class record_swapchain_command_buffers : public T {
 	public:
 		using parent = T;
@@ -475,6 +556,7 @@ namespace vulkan_hpp_helper {
 			auto render_images = parent::get_intermediate_images();
 			auto unsampled_images = parent::get_images();
 			auto image_extent = parent::get_image_extent();
+			auto framebuffers = parent::get_framebuffers();
 
 			auto clear_color_value_type = parent::get_format_clear_color_value_type(parent::get_image_format());
 			using value_type = decltype(clear_color_value_type);
@@ -620,27 +702,36 @@ namespace vulkan_hpp_helper {
 					.setDstOffsets(std::array{ vk::Offset3D{ 0,0,0 }, image_end}),
 					vk::Filter::eNearest
 				);
-				buffer.pipelineBarrier(
-					vk::PipelineStageFlagBits::eTransfer,
-					vk::PipelineStageFlagBits::eBottomOfPipe,
-					{},
-					{},
-					{},
-					vk::ImageMemoryBarrier{}
-					.setImage(swapchain_image)
-					.setOldLayout(vk::ImageLayout::eTransferDstOptimal)
-					.setNewLayout(vk::ImageLayout::ePresentSrcKHR)
-					.setSrcAccessMask(vk::AccessFlagBits::eTransferWrite)
-					.setDstAccessMask({})
-					.setSrcQueueFamilyIndex(queue_family_index)
-					.setDstQueueFamilyIndex(queue_family_index)
-					.setSubresourceRange(
-						vk::ImageSubresourceRange{}
-						.setAspectMask(vk::ImageAspectFlagBits::eColor)
-						.setLayerCount(1)
-						.setLevelCount(1)
-					)
+				vk::RenderPass render_pass = parent::get_render_pass();
+
+				vk::Extent2D swapchain_image_extent = parent::get_swapchain_image_extent();
+				auto render_area = vk::Rect2D{}.setOffset(vk::Offset2D{ 0,0 }).setExtent(swapchain_image_extent);
+				vk::Framebuffer framebuffer = framebuffers[index];
+				buffer.beginRenderPass(
+					vk::RenderPassBeginInfo{}
+					.setRenderPass(render_pass)
+					.setRenderArea(render_area)
+					.setFramebuffer(framebuffer),
+					vk::SubpassContents::eInline
 				);
+				auto clear_color_value_type = parent::get_format_clear_color_value_type(parent::get_swapchain_image_format());
+				using value_type = decltype(clear_color_value_type);
+				std::map<value_type, vk::ClearColorValue> clear_color_values{
+					{value_type::eFloat32, vk::ClearColorValue{}.setFloat32({1.0f,0.0f,0.0f,0.0f})},
+					{value_type::eUint32, vk::ClearColorValue{}.setUint32({255,0,0,0})},
+				};
+				if (!clear_color_values.contains(clear_color_value_type)) {
+					throw std::runtime_error{ "unsupported clear color value type" };
+				}
+				vk::ClearColorValue clear_color_value{ clear_color_values[clear_color_value_type] };
+				buffer.clearAttachments(
+					vk::ClearAttachment{}.setAspectMask(vk::ImageAspectFlagBits::eColor)
+					.setClearValue(vk::ClearValue{}.setColor(clear_color_value)),
+					vk::ClearRect{}
+				.setLayerCount(1)
+					.setRect(vk::Rect2D{}
+				.setExtent(swapchain_image_extent)));
+				buffer.endRenderPass();
 				buffer.end();
 			}
 		}
@@ -824,6 +915,7 @@ namespace vulkan_hpp_helper {
 				[device](vk::Fence& fence) {
 					fence = device.createFence(
 						vk::FenceCreateInfo{}
+						.setFlags(vk::FenceCreateFlagBits::eSignaled)
 					); }
 			);
 		}
@@ -1004,15 +1096,18 @@ namespace vulkan_hpp_helper {
 	public:
 		using parent = T;
 		auto get_pipeline_viewport_state_create_info() {
-			auto viewports = parent::get_viewports();
-			auto scissors = parent::get_scissors();
-			if (viewports.size() != scissors.size()) {
+			m_viewports = parent::get_viewports();
+			m_scissors = parent::get_scissors();
+			if (m_viewports.size() != m_scissors.size()) {
 				throw std::runtime_error{ "viewports count != scissors count" };
 			}
 			return vk::PipelineViewportStateCreateInfo{}
-				.setViewports(viewports)
-				.setScissors(scissors);
+				.setViewports(m_viewports)
+				.setScissors(m_scissors);
 		}
+	private:
+		std::vector<vk::Viewport> m_viewports;
+		std::vector<vk::Rect2D> m_scissors;
 	};
 	template<class T>
 	class add_scissor_equal_surface_rect : public T {
@@ -1132,11 +1227,30 @@ namespace vulkan_hpp_helper {
 	public:
 		using parent = T;
 		auto get_pipeline_vertex_input_state_create_info() {
-			auto attribute_descriptions = parent::get_vertex_attribute_descriptions();
-			auto binding_descriptions = parent::get_vertex_binding_descriptions();
+			m_attribute_descriptions = parent::get_vertex_attribute_descriptions();
+			m_binding_descriptions = parent::get_vertex_binding_descriptions();
 			return vk::PipelineVertexInputStateCreateInfo{}
-				.setVertexAttributeDescriptions(attribute_descriptions)
-				.setVertexBindingDescriptions(binding_descriptions);
+				.setVertexAttributeDescriptions(m_attribute_descriptions)
+				.setVertexBindingDescriptions(m_binding_descriptions);
+		}
+	private:
+		std::vector<vk::VertexInputAttributeDescription> m_attribute_descriptions;
+		std::vector<vk::VertexInputBindingDescription> m_binding_descriptions;
+	};
+	template<class T>
+	class add_vertex_attribute_description : public T {
+	public:
+		using parent = T;
+		auto get_vertex_attribute_descriptions() {
+			auto descs = parent::get_vertex_attribute_descriptions();
+			descs.emplace_back(
+				vk::VertexInputAttributeDescription{}
+				.setLocation(0)
+				.setBinding(0)
+				.setOffset(0)
+				.setFormat(vk::Format::eR32G32Sfloat)
+			);
+			return descs;
 		}
 	};
 	template<class T>
@@ -1371,7 +1485,8 @@ namespace vulkan_hpp_helper {
 	public:
 		auto get_pipeline_rasterization_state_create_info() {
 			return vk::PipelineRasterizationStateCreateInfo{}
-			.setPolygonMode(Polygon_mode);
+			.setPolygonMode(Polygon_mode)
+				.setLineWidth(1.0f);
 		}
 	};
 	template<class T>
@@ -1695,11 +1810,13 @@ int main() {
 			add_pipeline_vertex_input_state<
 			add_vertex_binding_description<
 			add_empty_binding_descriptions<
+			add_vertex_attribute_description<
 			add_empty_vertex_attribute_descriptions<
 			set_binding<0,
 			set_stride<sizeof(float)*2,
 			set_input_rate<vk::VertexInputRate::eVertex,
 			set_subpass<0,
+			add_framebuffers <
 			add_render_pass<
 			add_subpasses<
 			add_subpass_dependency<
@@ -1753,6 +1870,7 @@ int main() {
 			add_image_extent_equal_swapchain_image_extent<
 			add_image_type<vk::ImageType::e2D,
 			set_image_samples<vk::SampleCountFlagBits::e8,
+			add_swapchain_images_views<
 			add_swapchain_images<
 			add_swapchain<
 			add_swapchain_image_extent_equal_surface_current_extent<
@@ -1778,7 +1896,7 @@ int main() {
 			empty_class
 			>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 			>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-			>>>>>>>>>>>
+			>>>>>>>>>>>>>>
 		{};
 	}
 	catch (std::exception& e) {
