@@ -1011,6 +1011,16 @@ namespace vulkan_hpp_helper {
 		vk::Buffer m_buffer;
 	};
 	template<class T>
+	class jump_draw_if_window_minimized : public T {
+	public:
+		using parent = T;
+		void draw() {
+			if (!parent::is_window_minimized()) {
+				parent::draw();
+			}
+		}
+	};
+	template<class T>
 	class add_draw : public T{
 	public:
 		using parent = T;
@@ -2018,21 +2028,23 @@ namespace vulkan_hpp_helper {
 
 namespace windows_helper {
 	template<class T>
-	class add_window_class : public T {
+	class add_window_process : public T {
 	public:
-		add_window_class() {
-			const char* window_class_name = "draw_pixels";
-			WNDCLASS window_class{};
-			window_class.hInstance = GetModuleHandle(NULL);
-			window_class.lpszClassName = window_class_name;
-			window_class.lpfnWndProc = window_process;
-			m_window_class = RegisterClass(&window_class);
-		}
 		static LRESULT CALLBACK window_process(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
+			static std::map<HWND, add_window_process<T>*> hwnd_this{};
 			switch (uMsg)
 			{
 			case WM_CREATE:
 			{
+				auto create_struct = reinterpret_cast<CREATESTRUCT*>(lParam);
+				hwnd_this.emplace(hwnd, reinterpret_cast<add_window_process<T>*>(create_struct->lpCreateParams));
+				break;
+			}
+			case WM_SIZE:
+			{
+				uint16_t width = lParam;
+				uint16_t height = lParam >> 16;
+				hwnd_this[hwnd]->set_size(width, height);
 				break;
 			}
 			case WM_DESTROY:
@@ -2043,6 +2055,33 @@ namespace windows_helper {
 			}
 			return DefWindowProcA(hwnd, uMsg, wParam, lParam);
 		}
+		void* get_lparam() {
+			return this;
+		}
+		void set_size(uint16_t width, uint16_t height) {
+			m_width = width;
+			m_height = height;
+		}
+		bool is_window_minimized() {
+			return m_width == 0 || m_height == 0;
+		}
+	private:
+		static add_window_process<T>* m_this;
+		uint16_t m_width;
+		uint16_t m_height;
+	};
+	template<class T>
+	class add_window_class : public T {
+	public:
+		using parent = T;
+		add_window_class() {
+			const char* window_class_name = "draw_pixels";
+			WNDCLASS window_class{};
+			window_class.hInstance = GetModuleHandle(NULL);
+			window_class.lpszClassName = window_class_name;
+			window_class.lpfnWndProc = parent::window_process;
+			m_window_class = RegisterClass(&window_class);
+		}
 		~add_window_class() {
 			UnregisterClass((LPCSTR)m_window_class, GetModuleHandle(NULL));
 		}
@@ -2051,6 +2090,7 @@ namespace windows_helper {
 		}
 	private:
 		ATOM m_window_class;
+
 	};
 	template<int Width, int Height, class T>
 	class set_window_resolution : public T {
@@ -2102,7 +2142,7 @@ namespace windows_helper {
 			int window_style = parent::get_window_style();
 			m_window = CreateWindowA(
 				(LPCSTR)parent::get_window_class(), "draw_pixels", window_style, CW_USEDEFAULT, CW_USEDEFAULT,
-				width, height, NULL, NULL, GetModuleHandle(NULL), NULL);
+				width, height, NULL, NULL, GetModuleHandle(NULL), parent::get_lparam());
 			if (m_window == NULL) {
 				throw std::runtime_error("failed to create window");
 			}
@@ -2173,6 +2213,7 @@ int main() {
 		using namespace vulkan_hpp_helper;
 		auto show_window =
 			add_window_loop<
+			jump_draw_if_window_minimized<
 			add_draw<
 			add_acquire_next_image_semaphores<
 			add_acquire_next_image_semaphore_fences<
@@ -2294,10 +2335,11 @@ int main() {
 			set_window_resolution<151, 151,
 			set_window_style<WS_OVERLAPPEDWINDOW,
 			add_window_class<
+			add_window_process<
 			empty_class
 			>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 			>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-			>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+			>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 		{};
 	}
 	catch (std::exception& e) {
