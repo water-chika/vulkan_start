@@ -898,7 +898,7 @@ namespace vulkan_hpp_helper {
 			auto stages = parent::get_pipeline_stages();
 			vk::ShaderModule shader_module = parent::get_shader_module();
 			std::string entry_name = parent::get_shader_entry_name();
-			vk::ShaderStageFlagBits stage = parent::get_shadeer_stage();
+			vk::ShaderStageFlagBits stage = parent::get_shader_stage();
 			stages.emplace_back(vk::PipelineShaderStageCreateInfo{}
 				.setModule(shader_module)
 				.setPName(entry_name.data())
@@ -906,11 +906,18 @@ namespace vulkan_hpp_helper {
 			return stages;
 		}
 	};
-	template<auto Entry_name, class T>
-	class set_shader_entry_name : public T {
+	template<vk::ShaderStageFlagBits Shader_stage, class T>
+	class set_shader_stage : public T {
+	public:
+		auto get_shader_stage() {
+			return Shader_stage;
+		}
+	};
+	template<class T>
+	class set_shader_entry_name_with_main : public T {
 	public:
 		auto get_shader_entry_name() {
-			return std::string{ Entry_name };
+			return std::string{ "main" };
 		}
 	};
 	template<class T>
@@ -1308,7 +1315,8 @@ int main() {
 			add_queue<
 			add_graphics_pipeline<
 			add_pipeline_stage<
-			set_shader_entry_name<"main",
+			set_shader_stage<vk::ShaderStageFlagBits::eVertex,
+			set_shader_entry_name_with_main<
 			add_shader_module<
 			add_empty_pipeline_stages<
 			add_pipeline_layout<
@@ -1359,7 +1367,7 @@ int main() {
 			set_window_style<WS_OVERLAPPEDWINDOW,
 			add_window_class<
 			empty_class
-			>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+			>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 		{};
 	}
 	catch (std::exception& e) {
