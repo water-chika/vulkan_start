@@ -1251,16 +1251,56 @@ namespace vulkan_hpp_helper {
 	class add_spirv_code : public T {
 	public:
 		using parent = T;
-		add_spirv_code() {
-			std::byte* ptr = parent::get_pointer();
-			std::uint32_t size = parent::get_size_in_bytes();
-			m_code = std::span{ ptr, size };
-		}
 		auto get_spirv_code() {
-			m_code;
+			void* ptr = parent::get_code_pointer();
+			std::uint32_t size = parent::get_size_in_bytes();
+			return std::span{ reinterpret_cast<uint32_t*>(ptr), size/4 };
+		}
+	};
+	template<class T>
+	class adapte_map_file_to_spirv_code : public T {
+	public:
+		using parent = T;
+		auto get_code_pointer() {
+			return parent::get_mapped_pointer();
+		}
+		auto get_size_in_bytes() {
+			return parent::get_file_size();
+		}
+	};
+	template<class T>
+	class map_file_mapping : public T {
+	public:
+		using parent = T;
+		map_file_mapping() {
+			HANDLE mapping = parent::get_file_mapping();
+			m_memory = MapViewOfFile(mapping, FILE_MAP_READ, 0, 0, 0);
+			if (m_memory == nullptr) {
+				throw std::runtime_error{ "failed to map view of file" };
+			}
+		}
+		~map_file_mapping() {
+			UnmapViewOfFile(m_memory);
+		}
+		auto get_mapped_pointer() {
+			return m_memory;
 		}
 	private:
-		std::span<std::byte> m_code;
+		void* m_memory;
+	};
+	template<class T>
+	class cache_file_size : public T {
+	public:
+		using parent = T;
+		cache_file_size() {
+			HANDLE file = parent::get_file();
+			m_size = GetFileSize(file, NULL);
+		}
+		auto get_file_size() {
+			return m_size;
+		}
+	private:
+		uint32_t m_size;
 	};
 	template<class T>
 	class add_file_mapping : public T {
@@ -1269,21 +1309,45 @@ namespace vulkan_hpp_helper {
 		add_file_mapping() {
 			uint64_t maximum_size;
 			HANDLE file = parent::get_file();
-			LPSECURITY_ATTRIBUTES security_attributes = parent::get_security_attributes();
-			DWORD protect = parent::get_protect();
-			std::string name = parent::get_name();
-			m_mapping = CreateFileMapping(file, security_attributes, protect,
+			m_mapping = CreateFileMapping(file, nullptr, PAGE_READONLY,
 				static_cast<uint32_t>(maximum_size >> 32), static_cast<uint32_t>(maximum_size),
-				name.data());
+				nullptr);
 		}
 		~add_file_mapping() {
 			CloseHandle(m_mapping);
 		}
-		auto get_mapping() {
+		auto get_file_mapping() {
 			return m_mapping;
 		}
 	private:
 		HANDLE m_mapping;
+	};
+	template<class T>
+	class add_file : public T {
+	public:
+		using parent = T;
+		add_file() {
+			auto path = parent::get_file_path();
+			m_file = CreateFileW(path.c_str(), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+			if (m_file == NULL) {
+				throw std::runtime_error{ "failed to create file" };
+			}
+		}
+		~add_file() {
+			CloseHandle(m_file);
+		}
+		auto get_file() {
+			return m_file;
+		}
+	private:
+		HANDLE m_file;
+	};
+	template<class T>
+	class add_vertex_shader_path : public T {
+	public:
+		auto get_file_path() {
+			return std::filesystem::path{ "vert.spv" };
+		}
 	};
 	template<class T>
 	class add_empty_pipeline_stages : public T {
@@ -1639,6 +1703,13 @@ int main() {
 			set_shader_stage<vk::ShaderStageFlagBits::eVertex,
 			set_shader_entry_name_with_main<
 			add_shader_module<
+			add_spirv_code<
+			adapte_map_file_to_spirv_code<
+			map_file_mapping<
+			cache_file_size<
+			add_file_mapping<
+			add_file<
+			add_vertex_shader_path<
 			add_empty_pipeline_stages<
 			add_pipeline_layout<
 			set_pipeline_rasterization_polygon_mode<vk::PolygonMode::eFill,
@@ -1691,7 +1762,7 @@ int main() {
 			empty_class
 			>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 			>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-			>>>>>
+			>>>>>>>>>>>>
 		{};
 	}
 	catch (std::exception& e) {
