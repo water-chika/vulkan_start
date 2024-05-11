@@ -4,6 +4,7 @@
 #include <iostream>
 #include <numeric>
 #include <map>
+#include <string>
 
 namespace vulkan_hpp_helper {
 	template<class T>
@@ -905,6 +906,13 @@ namespace vulkan_hpp_helper {
 			return stages;
 		}
 	};
+	template<auto Entry_name, class T>
+	class set_shader_entry_name : public T {
+	public:
+		auto get_shader_entry_name() {
+			return std::string{ Entry_name };
+		}
+	};
 	template<class T>
 	class add_shader_module : public T {
 	public:
@@ -1299,6 +1307,10 @@ int main() {
 			add_command_pool<
 			add_queue<
 			add_graphics_pipeline<
+			add_pipeline_stage<
+			set_shader_entry_name<"main",
+			add_shader_module<
+			add_empty_pipeline_stages<
 			add_pipeline_layout<
 			set_pipeline_rasterization_polygon_mode<vk::PolygonMode::eFill,
 			disable_pipeline_multisample<
@@ -1347,7 +1359,7 @@ int main() {
 			set_window_style<WS_OVERLAPPEDWINDOW,
 			add_window_class<
 			empty_class
-			>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+			>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 		{};
 	}
 	catch (std::exception& e) {
