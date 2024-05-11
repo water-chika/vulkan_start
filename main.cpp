@@ -96,9 +96,7 @@ namespace vulkan_hpp_helper {
 	public:
 		using parent = T;
 		auto get_swapchain_image_extent() {
-			vk::SurfaceKHR surface = parent::get_surface();
-			vk::PhysicalDevice physical_device = parent::get_physical_device();
-			auto cap = physical_device.getSurfaceCapabilitiesKHR(surface);
+			vk::SurfaceCapabilitiesKHR cap = parent::get_surface_capabilities();
 			return cap.currentExtent;
 		}
 	};
@@ -108,12 +106,11 @@ namespace vulkan_hpp_helper {
 		using parent = T;
 		add_swapchain() {
 			vk::Device device = parent::get_device();
-			vk::PhysicalDevice physical_device = parent::get_physical_device();
 			vk::SurfaceKHR surface = parent::get_surface();
 			vk::Format format = parent::get_swapchain_image_format();
 			vk::Extent2D swapchain_image_extent = parent::get_swapchain_image_extent();
 
-			auto cap = physical_device.getSurfaceCapabilitiesKHR(surface);
+			vk::SurfaceCapabilitiesKHR cap = parent::get_surface_capabilities();
 			m_swapchain = device.createSwapchainKHR(
 				vk::SwapchainCreateInfoKHR{}
 				.setMinImageCount(cap.minImageCount)
@@ -861,6 +858,8 @@ namespace vulkan_hpp_helper {
 				parent::get_pipeline_vertex_input_state_create_info();
 			vk::PipelineViewportStateCreateInfo viewport_state =
 				parent::get_pipeline_viewport_state_create_info();
+			vk::RenderPass render_pass =
+				parent::get_render_pass();
 			uint32_t subpass = parent::get_subpass();
 			
 			m_pipeline = device.createGraphicsPipeline(
@@ -877,6 +876,7 @@ namespace vulkan_hpp_helper {
 				.setPTessellationState(&tessellation_state)
 				.setPVertexInputState(&vertex_input_state)
 				.setPViewportState(&viewport_state)
+				.setRenderPass(render_pass)
 				.setSubpass(subpass)
 			);
 		}
@@ -889,6 +889,164 @@ namespace vulkan_hpp_helper {
 		}
 	private:
 		vk::Pipeline m_pipeline;
+	};
+	template<uint32_t Subpass, class T>
+	class set_subpass : public T {
+	public:
+		auto get_subpass() {
+			return Subpass;
+		}
+	};
+	template<class T>
+	class add_render_pass : public T {
+	public:
+		using parent = T;
+		add_render_pass() {
+			vk::Device device = parent::get_device();
+			auto attachments = parent::get_attachments();
+			auto dependencies = parent::get_dependencies();
+			auto subpasses = parent::get_subpasses();
+
+			device.createRenderPass(
+				vk::RenderPassCreateInfo{}
+				.setAttachments(attachments)
+				.setDependencies(dependencies)
+				.setSubpasses(subpasses)
+			);
+		}
+		~add_render_pass() {
+			vk::Device device = parent::get_device();
+			device.destroyRenderPass(m_render_pass);
+		}
+		auto get_render_pass() {
+			return m_render_pass;
+		}
+	private:
+		vk::RenderPass m_render_pass;
+	};
+	template<class T>
+	class add_pipeline_viewport_state : public T {
+	public:
+		using parent = T;
+		auto get_pipeline_viewport_state_create_info() {
+			auto viewports = parent::get_viewports();
+			auto scissors = parent::get_scissors();
+			if (viewports.size() != scissors.size()) {
+				throw std::runtime_error{ "viewports count != scissors count" };
+			}
+			return vk::PipelineViewportStateCreateInfo{}
+				.setViewports(viewports)
+				.setScissors(scissors);
+		}
+	};
+	template<class T>
+	class add_scissor_equal_surface_rect : public T {
+	public:
+		using parent = T;
+		auto get_scissors() {
+			vk::SurfaceCapabilitiesKHR surface_cap = parent::get_surface_capabilities();
+			auto scissors = parent::get_scissors();
+			scissors.emplace_back(
+				vk::Rect2D{}
+				.setOffset({})
+				.setOffset(surface_cap.currentExtent)
+			);
+		}
+	};
+	template<class T>
+	class cache_surface_capabilities : public T {
+	public:
+		using parent = T;
+		cache_surface_capabilities() {
+			vk::PhysicalDevice physical_device = parent::get_physical_device();
+			vk::SurfaceKHR surface = parent::get_surface();
+			m_capabilities = physical_device.getSurfaceCapabilitiesKHR(surface);
+		}
+		auto get_surface_capabilities() {
+			return m_capabilities;
+		}
+	private:
+		vk::SurfaceCapabilitiesKHR m_capabilities;
+	};
+	template<class T>
+	class add_empty_scissors : public T {
+	public:
+		auto get_scissors() {
+			return std::vector<vk::Rect2D>{};
+		}
+	};
+	template<class T>
+	class add_viewport : public T {
+	public:
+		using parent = T;
+		auto get_viewports() {
+			auto viewports = parent::get_viewports();
+			float x = parent::get_x();
+			float y = parent::get_y();
+			float width = parent::get_viewport_width();
+			float height = parent::get_viewport_height();
+			float min_depth = parent::get_viewport_min_depth();
+			float max_depth = parent::get_viewport_max_depth();
+			viewports.emplace_back(
+				vk::Viewport{}
+				.setX(x)
+				.setY(y)
+				.setWidth(width)
+				.setHeight(height)
+				.setMinDepth(min_depth)
+				.setMaxDepth(max_depth)
+			);
+			return viewports;
+		}
+	};
+	template<float X, class T>
+	class set_viewport_x : public T {
+	public:
+		auto get_viewport_x() {
+			return X;
+		}
+	};
+	template<float Y, class T>
+	class set_viewport_y : public T {
+	public:
+		auto get_viewport_y() {
+			return Y;
+		}
+	};
+	template<float Width, class T>
+	class set_viewport_width : public T {
+	public:
+		auto get_viewport_width() {
+			return Width;
+		}
+	};
+	template<float Height, class T>
+	class set_viewport_height : public T {
+	public:
+		auto get_viewport_height() {
+			return Height;
+		}
+	};
+	template<float Min_depth, class T>
+	class set_viewport_min_depth : public T {
+	public:
+		auto get_viewport_min_depth() {
+			return Min_depth;
+		}
+	};
+	template<float Max_depth, class T>
+	class set_viewport_max_depth : public T {
+	public:
+		auto get_viewport_max_depth() {
+			return Max_depth;
+		}
+	};
+	template<class T>
+	class add_empty_viewports : public T {
+	public:
+		auto get_viewports() {
+			return std::vector<vk::Viewport>{};
+		}
 	};
 	template<class T>
 	class add_pipeline_vertex_input_state : public T {
@@ -1334,6 +1492,14 @@ int main() {
 			add_command_pool<
 			add_queue<
 			add_graphics_pipeline<
+			set_subpass<0,
+			add_render_pass<
+			add_pipeline_viewport_state<
+			add_scissor_equal_surface_rect <
+			add_empty_scissors <
+			set_viewport_x<-1.0f,set_viewport_width<2.0f,
+			set_viewport_y<-1.0f, set_viewport_height<2.0f,
+			set_viewport_min_depth<0.0f, set_viewport_max_depth<1.0f,
 			add_pipeline_vertex_input_state<
 			set_tessellation_patch_control_point_count<1,
 			add_pipeline_stage<
@@ -1377,6 +1543,7 @@ int main() {
 			add_empty_extensions<
 			add_find_properties<
 			cache_physical_device_memory_properties<
+			cache_surface_capabilities<
 			add_physical_device<
 			vulkan_windows_helper::add_windows_surface<
 			add_instance<
@@ -1389,7 +1556,7 @@ int main() {
 			set_window_style<WS_OVERLAPPEDWINDOW,
 			add_window_class<
 			empty_class
-			>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+			>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 		{};
 	}
 	catch (std::exception& e) {
