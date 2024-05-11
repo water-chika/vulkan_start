@@ -669,7 +669,12 @@ namespace vulkan_hpp_helper {
 			parent::free_acquire_next_image_semaphore(index);
 
 			vk::Fence acquire_next_image_semaphore_fence = parent::get_acquire_next_image_semaphore_fence(index);
-			device.waitForFences(acquire_next_image_semaphore_fence, true, UINT64_MAX);
+			{
+				vk::Result res= device.waitForFences(acquire_next_image_semaphore_fence, true, UINT64_MAX);
+				if (res != vk::Result::eSuccess) {
+					throw std::runtime_error{ "failed to wait fences" };
+				}
+			}
 			device.resetFences(acquire_next_image_semaphore_fence);
 
 			vk::Semaphore draw_image_semaphore = parent::get_draw_image_semaphore(index);
@@ -977,7 +982,7 @@ namespace vulkan_hpp_helper {
 			auto dependencies = parent::get_subpass_dependencies();
 			auto subpasses = parent::get_subpasses();
 
-			device.createRenderPass(
+			m_render_pass = device.createRenderPass(
 				vk::RenderPassCreateInfo{}
 				.setAttachments(attachments)
 				.setDependencies(dependencies)
@@ -1202,14 +1207,16 @@ namespace vulkan_hpp_helper {
 		auto get_pipeline_stages() {
 			auto stages = parent::get_pipeline_stages();
 			vk::ShaderModule shader_module = parent::get_shader_module();
-			std::string entry_name = parent::get_shader_entry_name();
+			m_entry_name = parent::get_shader_entry_name();
 			vk::ShaderStageFlagBits stage = parent::get_shader_stage();
 			stages.emplace_back(vk::PipelineShaderStageCreateInfo{}
 				.setModule(shader_module)
-				.setPName(entry_name.data())
+				.setPName(m_entry_name.data())
 				.setStage(stage));
 			return stages;
 		}
+	private:
+		std::string m_entry_name;
 	};
 	template<vk::ShaderStageFlagBits Shader_stage, class T>
 	class set_shader_stage : public T {
@@ -1275,7 +1282,7 @@ namespace vulkan_hpp_helper {
 		map_file_mapping() {
 			HANDLE mapping = parent::get_file_mapping();
 			m_memory = MapViewOfFile(mapping, FILE_MAP_READ, 0, 0, 0);
-			if (m_memory == nullptr) {
+			if (m_memory == INVALID_HANDLE_VALUE) {
 				throw std::runtime_error{ "failed to map view of file" };
 			}
 		}
@@ -1307,11 +1314,14 @@ namespace vulkan_hpp_helper {
 	public:
 		using parent = T;
 		add_file_mapping() {
-			uint64_t maximum_size;
+			uint64_t maximum_size{ 0 };
 			HANDLE file = parent::get_file();
 			m_mapping = CreateFileMapping(file, nullptr, PAGE_READONLY,
 				static_cast<uint32_t>(maximum_size >> 32), static_cast<uint32_t>(maximum_size),
 				nullptr);
+			if (m_mapping == INVALID_HANDLE_VALUE) {
+				throw std::runtime_error{ "failed to create file mapping" };
+			}
 		}
 		~add_file_mapping() {
 			CloseHandle(m_mapping);
@@ -1399,12 +1409,14 @@ namespace vulkan_hpp_helper {
 	public:
 		using parent = T;
 		auto get_pipeline_color_blend_state_create_info() {
-			auto attachments = parent::get_pipeline_color_blend_attachment_states();
+			m_attachments = parent::get_pipeline_color_blend_attachment_states();
 			return vk::PipelineColorBlendStateCreateInfo{}
 				.setAttachments(
-					attachments
+					m_attachments
 				);
 		}
+	private:
+		std::vector<vk::PipelineColorBlendAttachmentState> m_attachments;
 	};
 	template<uint32_t AttachmentIndex, class T>
 	class disable_pipeline_attachment_color_blend : public T {
@@ -1421,7 +1433,14 @@ namespace vulkan_hpp_helper {
 	class add_pipeline_color_blend_attachment_states : public T {
 	public:
 		auto get_pipeline_color_blend_attachment_states() {
-			return std::vector<vk::PipelineColorBlendAttachmentState>(AttachmentCount);
+			auto states = std::vector<vk::PipelineColorBlendAttachmentState>(AttachmentCount);
+			std::ranges::for_each(states, [](auto& state) {
+				state.setColorWriteMask(vk::ColorComponentFlagBits::eA |
+					vk::ColorComponentFlagBits::eR |
+					vk::ColorComponentFlagBits::eG |
+					vk::ColorComponentFlagBits::eB);
+				});
+			return states;
 		}
 	};
 	template<class T>
@@ -1430,13 +1449,11 @@ namespace vulkan_hpp_helper {
 		using parent = T;
 		add_pipeline_layout() {
 			vk::Device device = parent::get_device();
-			auto set_layouts = parent::get_descriptor_set_layouts();
-			auto push_constant_ranges = parent::get_pipeline_layout_push_constant_ranges();
+			//auto set_layouts = parent::get_descriptor_set_layouts();
 			
 			m_layout = device.createPipelineLayout(
 				vk::PipelineLayoutCreateInfo{}
-				.setSetLayouts(set_layouts)
-				.setPushConstantRanges(push_constant_ranges)
+				//.setSetLayouts(set_layouts)
 			);
 		}
 		~add_pipeline_layout() {
@@ -1666,7 +1683,6 @@ int main() {
 		auto show_window =
 			add_window_loop<
 			add_draw<
-			add_acquire_next_image_fences<
 			add_acquire_next_image_semaphores<
 			add_acquire_next_image_semaphore_fences<
 			add_draw_semaphores<
@@ -1762,7 +1778,7 @@ int main() {
 			empty_class
 			>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 			>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-			>>>>>>>>>>>>
+			>>>>>>>>>>>
 		{};
 	}
 	catch (std::exception& e) {

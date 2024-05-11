@@ -6,6 +6,15 @@ find_package(Vulkan REQUIRED)
 add_subdirectory(vulkan_helper)
 
 add_executable(test
-    main.cpp)
+    main.cpp
+    vert.spv
+    test.vert
+)
 target_link_libraries(test PUBLIC vulkan_helper)
 set_target_properties(test PROPERTIES CXX_STANDARD 23)
+
+add_custom_command(OUTPUT vert.spv
+  COMMAND Vulkan::glslangValidator --target-env vulkan1.3
+              ${CMAKE_CURRENT_SOURCE_DIR}/test.vert
+  MAIN_DEPENDENCY ${CMAKE_CURRENT_SOURCE_DIR}/test.vert
+  DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/test.vert Vulkan::glslangValidator)
