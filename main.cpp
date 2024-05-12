@@ -1071,7 +1071,7 @@ namespace vulkan_hpp_helper {
 				),
 				acquire_next_image_semaphore_fence
 			);
-			{
+			try {
 				auto res = queue.presentKHR(
 					vk::PresentInfoKHR{}
 					.setImageIndices(index)
@@ -1084,6 +1084,9 @@ namespace vulkan_hpp_helper {
 				else if (res != vk::Result::eSuccess) {
 					throw std::runtime_error{ "present return != success" };
 				}
+			}
+			catch (vk::OutOfDateKHRError e) {
+				need_recreate_surface = true;
 			}
 			if (need_recreate_surface) {
 				queue.waitIdle();
