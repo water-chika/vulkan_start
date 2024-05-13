@@ -271,6 +271,34 @@ public:
 	}
 };
 
+template<class T>
+class add_compute_pipeline : public T {
+public:
+	using parent = T;
+	add_compute_pipeline() {
+		create();
+	}
+	~add_compute_pipeline() {
+		destroy();
+	}
+	void create() {
+		vk::Device device = parent::get_device();
+		vk::PipelineShaderStageCreateInfo stage = parent::get_shader_stage();
+
+		m_pipeline = device.createComputePipeline(
+			nullptr,
+			vk::ComputePipelineCreateInfo{}
+			.setStage(stage)
+		);
+	}
+	void destroy() {
+		vk::Device device = parent::get_device();
+		device.destroyPipeline(m_pipeline);
+	}
+private:
+	vk::Pipeline m_pipeline;
+};
+
 namespace windows_helper {
 	template<class T>
 	class add_window_process : public T {
@@ -498,6 +526,7 @@ using draw_triangle_app =
 	add_viewport_equal_swapchain_image_rect <
 	add_empty_viewports <
 	set_tessellation_patch_control_point_count < 1,
+	add_pipeline_stage_to_stages<
 	add_pipeline_stage <
 	set_shader_stage < vk::ShaderStageFlagBits::eVertex,
 	add_shader_module <
@@ -508,6 +537,7 @@ using draw_triangle_app =
 	add_file_mapping <
 	add_file <
 	add_vertex_shader_path <
+	add_pipeline_stage_to_stages<
 	add_pipeline_stage <
 	set_shader_stage < vk::ShaderStageFlagBits::eFragment,
 	set_shader_entry_name_with_main <
@@ -562,9 +592,9 @@ using draw_triangle_app =
 	add_window_class<
 	add_window_process<
 	empty_class
-	>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> >
-	>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> >
-	>>>>>>>>>>>>>>>>>
+	>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+	>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+	>>>>>>>>>>>>>>>>>>>
 	;
 using clear_debug_app = 
 	add_window_loop <
@@ -633,7 +663,7 @@ using clear_debug_app =
 	add_window_class<
 	add_window_process<
 	empty_class
-	>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> >
+	>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 	>>>>>>>>>>>>>>>>>>>>>>
 	;
 
