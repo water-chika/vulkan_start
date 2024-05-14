@@ -2,9 +2,12 @@
 
 layout(location=0) in vec3 vertex;
 
+layout(binding=0) uniform Buffer{
+    uint index;
+} Frame;
 void main() {
     vec2 pos = vertex.xy;
-    float theta = 3.14*0.25*0.1;
+    float theta = Frame.index*0.1;
     mat4 rotate = mat4(
         cos(theta), -sin(theta), 0, 0,
         sin(theta), cos(theta), 0, 0,

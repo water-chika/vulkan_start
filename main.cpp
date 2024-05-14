@@ -211,18 +211,89 @@ public:
 		buffer.draw(3, 1, 0, 0);
 	}
 };
+
 template<class T>
-class add_cube_command_buffer_draw : public T {
+class record_swapchain_command_buffers_cube : public T {
 public:
 	using parent = T;
-	auto command_buffer_draw(vk::CommandBuffer buffer) {
-		vk::Buffer vertex_buffer = parent::get_vertex_buffer();
-		buffer.bindVertexBuffers(0,
-			vertex_buffer, vk::DeviceSize{ 0 });
-		vk::Buffer index_buffer = parent::get_index_buffer();
-		buffer.bindIndexBuffer(index_buffer, 0, vk::IndexType::eUint16);
-		buffer.drawIndexed(3 * 2 * 3 * 2, 1, 0, 0, 0);
+	record_swapchain_command_buffers_cube() {
+		create();
 	}
+	void create() {
+		auto buffers = parent::get_swapchain_command_buffers();
+		auto swapchain_images = parent::get_swapchain_images();
+		auto queue_family_index = parent::get_queue_family_index();
+		auto framebuffers = parent::get_framebuffers();
+
+		if (buffers.size() != swapchain_images.size()) {
+			throw std::runtime_error{ "swapchain images count != command buffers count" };
+		}
+		uint32_t index = 0;
+		for (uint32_t index = 0; index < buffers.size(); index++) {
+			vk::Image swapchain_image = swapchain_images[index];
+			vk::CommandBuffer cmd = buffers[index];
+
+			cmd.begin(
+				vk::CommandBufferBeginInfo{}
+			);
+			vk::Buffer uniform_buffer = parent::get_storage_buffer();
+
+			cmd.updateBuffer(uniform_buffer, 0, sizeof(m_frame_index), &m_frame_index);
+			m_frame_index++;
+
+			vk::RenderPass render_pass = parent::get_render_pass();
+
+			vk::Extent2D swapchain_image_extent = parent::get_swapchain_image_extent();
+			auto render_area = vk::Rect2D{}.setOffset(vk::Offset2D{ 0,0 }).setExtent(swapchain_image_extent);
+			vk::Framebuffer framebuffer = framebuffers[index];
+			cmd.beginRenderPass(
+				vk::RenderPassBeginInfo{}
+				.setRenderPass(render_pass)
+				.setRenderArea(render_area)
+				.setFramebuffer(framebuffer),
+				vk::SubpassContents::eInline
+			);
+			auto clear_color_value_type = parent::get_format_clear_color_value_type(parent::get_swapchain_image_format());
+			using value_type = decltype(clear_color_value_type);
+			std::map<value_type, vk::ClearColorValue> clear_color_values{
+				{value_type::eFloat32, vk::ClearColorValue{}.setFloat32({1.0f,0.0f,0.0f,0.0f})},
+				{value_type::eUint32, vk::ClearColorValue{}.setUint32({255,0,0,0})},
+			};
+			if (!clear_color_values.contains(clear_color_value_type)) {
+				throw std::runtime_error{ "unsupported clear color value type" };
+			}
+			vk::ClearColorValue clear_color_value{ clear_color_values[clear_color_value_type] };
+			cmd.clearAttachments(
+				vk::ClearAttachment{}.setAspectMask(vk::ImageAspectFlagBits::eColor)
+				.setClearValue(vk::ClearValue{}.setColor(clear_color_value)),
+				vk::ClearRect{}
+				.setLayerCount(1)
+				.setRect(vk::Rect2D{}
+			.setExtent(swapchain_image_extent)));
+			vk::Pipeline pipeline = parent::get_pipeline();
+			cmd.bindPipeline(
+				vk::PipelineBindPoint::eGraphics,
+				pipeline
+			);
+			vk::Buffer vertex_buffer = parent::get_vertex_buffer();
+			cmd.bindVertexBuffers(0,
+				vertex_buffer, vk::DeviceSize{ 0 });
+			vk::Buffer index_buffer = parent::get_index_buffer();
+			cmd.bindIndexBuffer(index_buffer, 0, vk::IndexType::eUint16);
+
+			vk::PipelineLayout pipeline_layout = parent::get_pipeline_layout();
+			vk::DescriptorSet descriptor_set = parent::get_descriptor_set();
+			cmd.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pipeline_layout, 0, descriptor_set, {});
+			cmd.drawIndexed(3 * 2 * 3 * 2, 1, 0, 0, 0);
+			cmd.endRenderPass();
+			cmd.end();
+		}
+	}
+	void destroy() {
+
+	}
+private:
+	uint32_t m_frame_index = 0;
 };
 template<class T>
 class record_swapchain_command_buffers : public T {
@@ -295,11 +366,6 @@ public:
 template<class T>
 class record_swapchain_command_buffers_triangle
 	: public record_swapchain_command_buffers<add_triangle_command_buffer_draw<T>> {
-
-};
-template<class T>
-class record_swapchain_command_buffers_cube
-	: public record_swapchain_command_buffers<add_cube_command_buffer_draw<T>> {
 
 };
 
@@ -703,6 +769,113 @@ using draw_triangle_app =
 			return std::filesystem::path{ "cube_vert.spv" };
 		}
 	};
+	template<class T>
+	class add_cube_descriptor_set_layout_binding : public T {
+	public:
+		using parent = T;
+		add_cube_descriptor_set_layout_binding() {
+			vk::ShaderStageFlagBits stages = vk::ShaderStageFlagBits::eVertex;
+			m_binding = vk::DescriptorSetLayoutBinding{}
+				.setBinding(0)
+				.setDescriptorCount(1)
+				.setDescriptorType(vk::DescriptorType::eUniformBuffer)
+				.setStageFlags(stages);
+		}
+		auto get_descriptor_set_layout_bindings() {
+			return m_binding;
+		}
+	private:
+		vk::DescriptorSetLayoutBinding m_binding;
+	};
+	template<class T>
+	class add_descriptor_pool : public T {
+	public:
+		using parent = T;
+		add_descriptor_pool() {
+			create();
+		}
+		~add_descriptor_pool() {
+			destroy();
+		}
+		void create() {
+			vk::Device device = parent::get_device();
+
+			auto pool_sizes = vk::DescriptorPoolSize{}
+				.setDescriptorCount(1)
+				.setType(vk::DescriptorType::eUniformBuffer);
+			m_pool = device.createDescriptorPool(
+				vk::DescriptorPoolCreateInfo{}
+				.setMaxSets(1)
+				.setPoolSizes(pool_sizes)
+			);
+		}
+		void destroy() {
+			vk::Device device = parent::get_device();
+
+			device.destroyDescriptorPool(m_pool);
+		}
+		auto get_descriptor_pool() {
+			return m_pool;
+		}
+	private:
+		vk::DescriptorPool m_pool;
+	};
+	template<class T>
+	class add_nonfree_descriptor_set : public T {
+	public:
+		using parent = T;
+		add_nonfree_descriptor_set() {
+			create();
+		}
+		~add_nonfree_descriptor_set() {
+			destroy();
+		}
+		void create() {
+			vk::Device device = parent::get_device();
+			vk::DescriptorPool pool = parent::get_descriptor_pool();
+			vk::DescriptorSetLayout layout = parent::get_descriptor_set_layout();
+
+			m_set = device.allocateDescriptorSets(
+				vk::DescriptorSetAllocateInfo{}
+				.setDescriptorPool(pool)
+				.setDescriptorSetCount(1)
+				.setSetLayouts(layout)
+			)[0];
+		}
+		void destroy() {
+		}
+		auto get_descriptor_set() {
+			return m_set;
+		}
+	private:
+		vk::DescriptorSet m_set;
+	};
+	template<class T>
+	class write_descriptor_set : public T {
+	public:
+		using parent = T;
+		write_descriptor_set() {
+			create();
+		}
+		auto create() {
+			vk::Device device = parent::get_device();
+			vk::Buffer buffer = parent::get_storage_buffer();
+			vk::DescriptorSet set = parent::get_descriptor_set();
+
+			auto buffer_info = vk::DescriptorBufferInfo{}
+			.setBuffer(buffer)
+				.setRange(vk::WholeSize);
+			device.updateDescriptorSets(
+				vk::WriteDescriptorSet{}
+				.setDstSet(set)
+				.setDescriptorCount(1)
+				.setDescriptorType(vk::DescriptorType::eUniformBuffer)
+				.setDstBinding(0)
+				.setBufferInfo(buffer_info),
+				{}
+			);
+		}
+	};
 	using draw_cube_app =
 		add_window_loop <
 		jump_draw_if_window_minimized <
@@ -717,11 +890,22 @@ using draw_triangle_app =
 		add_swapchain_command_buffers <
 		add_command_pool <
 		add_queue <
+		write_descriptor_set<
+		add_nonfree_descriptor_set<
+		add_descriptor_pool<
 		add_buffer_memory_with_data_copy<
 		rename_buffer_to_index_buffer<
 		add_buffer<
 		set_buffer_usage<vk::BufferUsageFlagBits::eIndexBuffer,
 		add_cube_index_buffer_data<
+		rename_buffer_to_storage_buffer<
+		add_buffer_memory<
+		set_buffer_memory_properties<vk::MemoryPropertyFlagBits::eDeviceLocal,
+		add_buffer<
+		add_buffer_usage<vk::BufferUsageFlagBits::eTransferDst,
+		add_buffer_usage<vk::BufferUsageFlagBits::eUniformBuffer,
+		empty_buffer_usage<
+		set_buffer_size<sizeof(uint64_t),
 		add_buffer_memory_with_data_copy <
 		rename_buffer_to_vertex_buffer<
 		add_buffer <
@@ -778,6 +962,9 @@ using draw_triangle_app =
 		add_fragment_shader_path <
 		add_empty_pipeline_stages <
 		add_pipeline_layout <
+		add_single_descriptor_set_layout<
+		add_descriptor_set_layout<
+		add_cube_descriptor_set_layout_binding<
 		set_pipeline_rasterization_polygon_mode < vk::PolygonMode::eFill,
 		disable_pipeline_multisample <
 		set_pipeline_input_topology < vk::PrimitiveTopology::eTriangleList,
@@ -821,7 +1008,7 @@ using draw_triangle_app =
 		empty_class
 		>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> >
 		>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> >
-		>>>>>>>>>>>>>>>>>>>>>>>>>>>
+		>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 		;
 using clear_debug_app = 
 	add_window_loop <
