@@ -5,19 +5,25 @@ project(vulkan_start)
 find_package(Vulkan REQUIRED)
 add_subdirectory(vulkan_helper)
 
-add_executable(test
-    main.cpp
+add_executable(triangle
+    triangle.cpp
     vert.spv
     test.vert
     frag.spv
     test.frag
+)
+target_link_libraries(triangle PUBLIC vulkan_helper)
+set_target_properties(triangle PROPERTIES CXX_STANDARD 23)
+
+add_executable(cube
+    main.cpp
     cube.vert
     cube_vert.spv
     cube.frag
     cube_frag.spv
 )
-target_link_libraries(test PUBLIC vulkan_helper)
-set_target_properties(test PROPERTIES CXX_STANDARD 23)
+target_link_libraries(cube PUBLIC vulkan_helper)
+set_target_properties(cube PROPERTIES CXX_STANDARD 23)
 
 add_custom_command(OUTPUT vert.spv
   COMMAND Vulkan::glslangValidator --target-env vulkan1.3

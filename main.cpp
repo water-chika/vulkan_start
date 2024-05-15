@@ -202,17 +202,6 @@ public:
 };
 
 template<class T>
-class add_triangle_command_buffer_draw : public T {
-public:
-	using parent = T;
-	auto command_buffer_draw(vk::CommandBuffer buffer) {
-		vk::Buffer vertex_buffer = parent::get_vertex_buffer();
-		buffer.bindVertexBuffers(0, vertex_buffer, { 0 });
-		buffer.draw(3, 1, 0, 0);
-	}
-};
-
-template<class T>
 class record_swapchain_command_buffers_cube : public T {
 public:
 	using parent = T;
@@ -366,12 +355,6 @@ public:
 	void destroy() {
 
 	}
-};
-
-template<class T>
-class record_swapchain_command_buffers_triangle
-	: public record_swapchain_command_buffers<add_triangle_command_buffer_draw<T>> {
-
 };
 
 template<class T>
@@ -604,121 +587,6 @@ private:
 
 	};
 };
-using draw_triangle_app = 
-	add_window_loop <
-	jump_draw_if_window_minimized <
-	add_draw <
-	add_acquire_next_image_semaphores <
-	add_acquire_next_image_semaphore_fences <
-	add_draw_semaphores <
-	add_recreate_surface_for <
-	record_swapchain_command_buffers_triangle <
-	add_get_format_clear_color_value_type <
-	add_recreate_surface_for <
-	add_swapchain_command_buffers <
-	add_command_pool <
-	add_queue <
-	rename_buffer_to_vertex_buffer<
-	add_buffer_memory_with_data_copy <
-	add_buffer_as_member <
-	set_buffer_usage<vk::BufferUsageFlagBits::eVertexBuffer,
-	add_triangle_vertex_buffer_data <
-	add_recreate_surface_for_pipeline <
-	add_graphics_pipeline <
-	add_pipeline_vertex_input_state <
-	add_vertex_binding_description <
-	add_empty_binding_descriptions <
-	add_vertex_attribute_description <
-	set_vertex_input_attribute_format<vk::Format::eR32G32B32Sfloat,
-	add_empty_vertex_attribute_descriptions <
-	set_binding < 0,
-	set_stride < sizeof(float) * 2,
-	set_input_rate < vk::VertexInputRate::eVertex,
-	set_subpass < 0,
-	add_recreate_surface_for_framebuffers <
-	add_framebuffers <
-	add_render_pass <
-	add_subpasses <
-	add_subpass_dependency <
-	add_empty_subpass_dependencies <
-	add_attachment <
-	add_empty_attachments <
-	add_pipeline_viewport_state <
-	add_scissor_equal_surface_rect <
-	add_empty_scissors <
-	add_viewport_equal_swapchain_image_rect <
-	add_empty_viewports <
-	set_tessellation_patch_control_point_count < 1,
-	add_pipeline_stage_to_stages<
-	add_pipeline_stage <
-	set_shader_stage < vk::ShaderStageFlagBits::eVertex,
-	add_shader_module <
-	add_spirv_code <
-	adapte_map_file_to_spirv_code <
-	map_file_mapping <
-	cache_file_size <
-	add_file_mapping <
-	add_file <
-	add_vertex_shader_path <
-	add_pipeline_stage_to_stages<
-	add_pipeline_stage <
-	set_shader_stage < vk::ShaderStageFlagBits::eFragment,
-	set_shader_entry_name_with_main <
-	add_shader_module <
-	add_spirv_code <
-	adapte_map_file_to_spirv_code <
-	map_file_mapping <
-	cache_file_size <
-	add_file_mapping <
-	add_file <
-	add_fragment_shader_path <
-	add_empty_pipeline_stages <
-	add_pipeline_layout <
-	set_pipeline_rasterization_polygon_mode < vk::PolygonMode::eFill,
-	disable_pipeline_multisample <
-	set_pipeline_input_topology < vk::PrimitiveTopology::eTriangleList,
-	disable_pipeline_dynamic <
-	disable_pipeline_depth_stencil <
-	add_pipeline_color_blend_state_create_info <
-	disable_pipeline_attachment_color_blend < 0, // disable index 0 attachment
-	add_pipeline_color_blend_attachment_states < 1, // 1 attachment
-	
-	add_recreate_surface_for_swapchain_images_views <
-	add_swapchain_images_views <
-	add_recreate_surface_for_swapchain_images <
-	add_swapchain_images <
-	add_recreate_surface_for_swapchain <
-	add_swapchain <
-	add_swapchain_image_extent_equal_surface_current_extent <
-	add_swapchain_image_format <
-	add_device <
-	add_swapchain_extension <
-	add_empty_extensions <
-	add_find_properties <
-	cache_physical_device_memory_properties<
-	add_recreate_surface_for_cache_surface_capabilites<
-	cache_surface_capabilities<
-	add_recreate_surface_for<
-	test_physical_device_support_surface<
-	add_queue_family_index <
-	add_physical_device<
-	add_recreate_surface<
-	vulkan_windows_helper::add_windows_surface<
-	add_instance<
-	add_win32_surface_extension<
-	add_surface_extension<
-	add_empty_extensions<
-	add_window<
-	adjust_window_resolution<
-	set_window_resolution<151, 151,
-	set_window_style<WS_OVERLAPPEDWINDOW,
-	add_window_class<
-	add_window_process<
-	empty_class
-	>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-	>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-	>>>>>>>>>>>>>>>>>>>>>>
-	;
 
 	template<class T>
 	class add_cube_vertex_buffer_data : public T {
