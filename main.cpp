@@ -228,6 +228,22 @@ public:
 		std::vector<vk::Buffer> uniform_upload_buffers = parent::get_uniform_upload_buffer_vector();
 		std::vector<vk::DescriptorSet> descriptor_sets = parent::get_descriptor_set();
 
+		auto clear_color_value_type = parent::get_format_clear_color_value_type(parent::get_swapchain_image_format());
+		using value_type = decltype(clear_color_value_type);
+		std::map<value_type, vk::ClearColorValue> clear_color_values{
+			{value_type::eFloat32, vk::ClearColorValue{}.setFloat32({0.4f,0.4f,0.4f,0.0f})},
+			{value_type::eUint32, vk::ClearColorValue{}.setUint32({50,50,50,0})},
+		};
+		if (!clear_color_values.contains(clear_color_value_type)) {
+			throw std::runtime_error{ "unsupported clear color value type" };
+		}
+		vk::ClearColorValue clear_color_value{ clear_color_values[clear_color_value_type] };
+		auto clear_depth_value = vk::ClearDepthStencilValue{}.setDepth(1.0f);
+		auto clear_values = std::array{
+			vk::ClearValue{}.setColor(clear_color_value),
+			vk::ClearValue{}.setDepthStencil(clear_depth_value)
+		};
+
 		if (buffers.size() != swapchain_images.size()) {
 			throw std::runtime_error{ "swapchain images count != command buffers count" };
 		}
@@ -254,26 +270,13 @@ public:
 				vk::RenderPassBeginInfo{}
 				.setRenderPass(render_pass)
 				.setRenderArea(render_area)
-				.setFramebuffer(framebuffer),
+				.setFramebuffer(framebuffer)
+				.setClearValues(
+					clear_values
+				),
 				vk::SubpassContents::eInline
 			);
-			auto clear_color_value_type = parent::get_format_clear_color_value_type(parent::get_swapchain_image_format());
-			using value_type = decltype(clear_color_value_type);
-			std::map<value_type, vk::ClearColorValue> clear_color_values{
-				{value_type::eFloat32, vk::ClearColorValue{}.setFloat32({1.0f,0.0f,0.0f,0.0f})},
-				{value_type::eUint32, vk::ClearColorValue{}.setUint32({255,0,0,0})},
-			};
-			if (!clear_color_values.contains(clear_color_value_type)) {
-				throw std::runtime_error{ "unsupported clear color value type" };
-			}
-			vk::ClearColorValue clear_color_value{ clear_color_values[clear_color_value_type] };
-			cmd.clearAttachments(
-				vk::ClearAttachment{}.setAspectMask(vk::ImageAspectFlagBits::eColor)
-				.setClearValue(vk::ClearValue{}.setColor(clear_color_value)),
-				vk::ClearRect{}
-				.setLayerCount(1)
-				.setRect(vk::Rect2D{}
-			.setExtent(swapchain_image_extent)));
+			
 			vk::Pipeline pipeline = parent::get_pipeline();
 			cmd.bindPipeline(
 				vk::PipelineBindPoint::eGraphics,
@@ -901,6 +904,230 @@ using draw_triangle_app =
 			device.updateDescriptorSets(writes, {});
 		}
 	};
+	template<class T>
+	class add_framebuffers_cube : public T {
+	public:
+		using parent = T;
+		add_framebuffers_cube() {
+			create_framebuffers();
+		}
+		~add_framebuffers_cube() {
+			destroy_framebuffers();
+		}
+		void create_framebuffers() {
+			vk::Device device = parent::get_device();
+			vk::RenderPass render_pass = parent::get_render_pass();
+			auto extent = parent::get_swapchain_image_extent();
+			uint32_t width = extent.width;
+			uint32_t height = extent.height;
+			auto swapchain_image_views = parent::get_swapchain_image_views();
+			auto depth_image_views = parent::get_depth_images_views();
+			m_framebuffers.resize(swapchain_image_views.size());
+			for (uint32_t i = 0; i < swapchain_image_views.size(); i++) {
+				auto depth_image_view = depth_image_views[i];
+				auto swapchain_image_view = swapchain_image_views[i];
+				auto& framebuffer = m_framebuffers[i];
+				auto attachments = std::array{ swapchain_image_view, depth_image_view };
+
+				framebuffer = device.createFramebuffer(
+					vk::FramebufferCreateInfo{}
+					.setAttachments(attachments)
+					.setRenderPass(render_pass)
+					.setWidth(width)
+					.setHeight(height)
+					.setLayers(1)
+				);
+			}
+		}
+		void destroy_framebuffers() {
+			vk::Device device = parent::get_device();
+			std::ranges::for_each(m_framebuffers,
+				[device](auto framebuffer) {
+					device.destroyFramebuffer(framebuffer);
+				});
+		}
+		auto get_framebuffers() {
+			return m_framebuffers;
+		}
+	private:
+		std::vector<vk::Framebuffer> m_framebuffers;
+	};
+	template<class T>
+	class add_depth_images_views_cube : public T {
+	public:
+		using parent = T;
+		add_depth_images_views_cube() {
+			create();
+		}
+		~add_depth_images_views_cube() {
+			destroy();
+		}
+		void create() {
+			vk::Device device = parent::get_device();
+			auto images = parent::get_images();
+			vk::Format format = parent::get_image_format();
+
+			m_views.resize(images.size());
+			std::ranges::transform(
+				images,
+				m_views.begin(),
+				[device, format](auto image) {
+					return device.createImageView(
+						vk::ImageViewCreateInfo{}
+						.setImage(image)
+						.setFormat(format)
+						.setSubresourceRange(
+							vk::ImageSubresourceRange{}
+							.setAspectMask(vk::ImageAspectFlagBits::eDepth)
+							.setLayerCount(1)
+							.setLevelCount(1)
+						)
+						.setViewType(vk::ImageViewType::e2D)
+					);
+				}
+			);
+		}
+		void destroy() {
+			vk::Device device = parent::get_device();
+			std::ranges::for_each(
+				m_views,
+				[device](auto view) {
+					device.destroyImageView(view);
+				}
+			);
+		}
+		auto get_images_views() {
+			return m_views;
+		}
+	private:
+		std::vector<vk::ImageView> m_views;
+	};
+	template<class T>
+	class add_render_pass_cube : public T {
+	public:
+		using parent = T;
+		add_render_pass_cube() {
+			vk::Device device = parent::get_device();
+			auto attachments = parent::get_attachments();
+			auto dependencies = parent::get_subpass_dependencies();
+			auto color_attachment = vk::AttachmentReference{}.setAttachment(0).setLayout(vk::ImageLayout::eColorAttachmentOptimal);
+			auto depth_attachment = vk::AttachmentReference{}.setAttachment(1).setLayout(vk::ImageLayout::eGeneral);
+			auto subpasses = std::array{
+				vk::SubpassDescription{}.setColorAttachments(color_attachment).setPDepthStencilAttachment(&depth_attachment)
+			};
+
+			m_render_pass = device.createRenderPass(
+				vk::RenderPassCreateInfo{}
+				.setAttachments(attachments)
+				.setDependencies(dependencies)
+				.setSubpasses(subpasses)
+			);
+		}
+		~add_render_pass_cube() {
+			vk::Device device = parent::get_device();
+			device.destroyRenderPass(m_render_pass);
+		}
+		auto get_render_pass() {
+			return m_render_pass;
+		}
+	private:
+		vk::RenderPass m_render_pass;
+	};
+	template<class T>
+	class add_dynamic_draw : public T {
+	public:
+		using parent = T;
+		void draw() {
+			vk::Device device = parent::get_device();
+			vk::SwapchainKHR swapchain = parent::get_swapchain();
+			vk::Queue queue = parent::get_queue();
+			vk::Semaphore acquire_image_semaphore = parent::get_acquire_next_image_semaphore();
+			bool need_recreate_surface = false;
+
+
+			auto [res, index] = device.acquireNextImage2KHR(
+				vk::AcquireNextImageInfoKHR{}
+				.setSwapchain(swapchain)
+				.setSemaphore(acquire_image_semaphore)
+				.setTimeout(UINT64_MAX)
+				.setDeviceMask(1)
+			);
+			if (res == vk::Result::eSuboptimalKHR) {
+				need_recreate_surface = true;
+			}
+			else if (res != vk::Result::eSuccess) {
+				throw std::runtime_error{ "acquire next image != success" };
+			}
+			parent::free_acquire_next_image_semaphore(index);
+
+			vk::Fence acquire_next_image_semaphore_fence = parent::get_acquire_next_image_semaphore_fence(index);
+			{
+				vk::Result res = device.waitForFences(acquire_next_image_semaphore_fence, true, UINT64_MAX);
+				if (res != vk::Result::eSuccess) {
+					throw std::runtime_error{ "failed to wait fences" };
+				}
+			}
+			device.resetFences(acquire_next_image_semaphore_fence);
+
+			std::vector<void*> upload_memory_ptrs = parent::get_uniform_upload_buffer_memory_ptr_vector();
+			void* upload_ptr = upload_memory_ptrs[index];
+			memcpy(upload_ptr, &m_frame_index, sizeof(m_frame_index));
+			m_frame_index++;
+			std::vector<vk::DeviceMemory> upload_memory_vector = parent::get_uniform_upload_buffer_memory_vector();
+			vk::DeviceMemory upload_memory = upload_memory_vector[index];
+			device.flushMappedMemoryRanges(
+				vk::MappedMemoryRange{}
+				.setMemory(upload_memory)
+				.setOffset(0)
+				.setSize(vk::WholeSize)
+			);
+
+			vk::Semaphore draw_image_semaphore = parent::get_draw_image_semaphore(index);
+			vk::CommandBuffer buffer = parent::get_swapchain_command_buffer(index);
+			vk::PipelineStageFlags wait_stage_mask{ vk::PipelineStageFlagBits::eTopOfPipe };
+			queue.submit(
+				vk::SubmitInfo{}
+				.setCommandBuffers(buffer)
+				.setWaitSemaphores(
+					acquire_image_semaphore
+				)
+				.setWaitDstStageMask(wait_stage_mask)
+				.setSignalSemaphores(
+					draw_image_semaphore
+				),
+				acquire_next_image_semaphore_fence
+			);
+			try {
+				auto res = queue.presentKHR(
+					vk::PresentInfoKHR{}
+					.setImageIndices(index)
+					.setSwapchains(swapchain)
+					.setWaitSemaphores(draw_image_semaphore)
+				);
+				if (res == vk::Result::eSuboptimalKHR) {
+					need_recreate_surface = true;
+				}
+				else if (res != vk::Result::eSuccess) {
+					throw std::runtime_error{ "present return != success" };
+				}
+			}
+			catch (vk::OutOfDateKHRError e) {
+				need_recreate_surface = true;
+			}
+			if (need_recreate_surface) {
+				queue.waitIdle();
+				parent::recreate_surface();
+			}
+		}
+		~add_dynamic_draw() {
+			vk::Device device = parent::get_device();
+			vk::Queue queue = parent::get_queue();
+			queue.waitIdle();
+		}
+	private:
+		uint64_t m_frame_index = 0;
+	};
+
 	using draw_cube_app =
 		add_window_loop <
 		jump_draw_if_window_minimized <
@@ -959,11 +1186,12 @@ using draw_triangle_app =
 		set_input_rate < vk::VertexInputRate::eVertex,
 		set_subpass < 0,
 		add_recreate_surface_for_framebuffers <
-		add_framebuffers <
-		add_render_pass <
+		add_framebuffers_cube <
+		add_render_pass_cube <
 		add_subpasses <
 		add_subpass_dependency <
 		add_empty_subpass_dependencies <
+		add_depth_attachment<
 		add_attachment <
 		add_empty_attachments <
 		add_pipeline_viewport_state <
@@ -1004,11 +1232,28 @@ using draw_triangle_app =
 		disable_pipeline_multisample <
 		set_pipeline_input_topology < vk::PrimitiveTopology::eTriangleList,
 		disable_pipeline_dynamic <
-		disable_pipeline_depth_stencil <
+		enable_pipeline_depth_test <
 		add_pipeline_color_blend_state_create_info <
 		disable_pipeline_attachment_color_blend < 0, // disable index 0 attachment
 		add_pipeline_color_blend_attachment_states < 1, // 1 attachment
-
+		rename_images_views_to_depth_images_views<
+		add_recreate_surface_for<
+		add_depth_images_views_cube<
+		add_recreate_surface_for_images_memories<
+		add_images_memories<
+		add_image_memory_property<vk::MemoryPropertyFlagBits::eDeviceLocal,
+		add_empty_image_memory_properties<
+		add_recreate_surface_for_images<
+		add_images<
+		add_image_type<vk::ImageType::e2D,
+		set_image_tiling<vk::ImageTiling::eOptimal,
+		set_image_samples<vk::SampleCountFlagBits::e1,
+		add_image_extent_equal_swapchain_image_extent<
+		add_image_usage<vk::ImageUsageFlagBits::eDepthStencilAttachment,
+		add_empty_image_usages<
+		rename_image_format_to_depth_image_format<
+		add_image_format<vk::Format::eD32Sfloat,
+		add_image_count_equal_swapchain_image_count<
 		add_recreate_surface_for_swapchain_images_views <
 		add_swapchain_images_views <
 		add_recreate_surface_for_swapchain_images <
@@ -1044,7 +1289,7 @@ using draw_triangle_app =
 		>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> >
 		>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> >
 		>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-		>>>>>>>>
+		>>>>>>>>>>>>>>>>>>>>>>>>>>>
 		;
 using clear_debug_app = 
 	add_window_loop <
