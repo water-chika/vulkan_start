@@ -224,6 +224,9 @@ public:
 		auto swapchain_images = parent::get_swapchain_images();
 		auto queue_family_index = parent::get_queue_family_index();
 		auto framebuffers = parent::get_framebuffers();
+		std::vector<vk::Buffer> uniform_buffers = parent::get_uniform_buffer_vector();
+		std::vector<vk::Buffer> uniform_upload_buffers = parent::get_uniform_upload_buffer_vector();
+		std::vector<vk::DescriptorSet> descriptor_sets = parent::get_descriptor_set();
 
 		if (buffers.size() != swapchain_images.size()) {
 			throw std::runtime_error{ "swapchain images count != command buffers count" };
@@ -236,10 +239,11 @@ public:
 			cmd.begin(
 				vk::CommandBufferBeginInfo{}
 			);
-			vk::Buffer uniform_buffer = parent::get_storage_buffer();
 
-			cmd.updateBuffer(uniform_buffer, 0, sizeof(m_frame_index), &m_frame_index);
-			m_frame_index++;
+			vk::Buffer uniform_buffer = uniform_buffers[index];
+			vk::Buffer upload_buffer = uniform_upload_buffers[index];
+			cmd.copyBuffer(upload_buffer, uniform_buffer,
+				vk::BufferCopy{}.setSize(sizeof(uint64_t)));
 
 			vk::RenderPass render_pass = parent::get_render_pass();
 
@@ -282,7 +286,7 @@ public:
 			cmd.bindIndexBuffer(index_buffer, 0, vk::IndexType::eUint16);
 
 			vk::PipelineLayout pipeline_layout = parent::get_pipeline_layout();
-			vk::DescriptorSet descriptor_set = parent::get_descriptor_set();
+			vk::DescriptorSet descriptor_set = descriptor_sets[index];
 			cmd.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pipeline_layout, 0, descriptor_set, {});
 			cmd.drawIndexed(3 * 2 * 3 * 2, 1, 0, 0, 0);
 			cmd.endRenderPass();
@@ -292,8 +296,6 @@ public:
 	void destroy() {
 
 	}
-private:
-	uint32_t m_frame_index = 0;
 };
 template<class T>
 class record_swapchain_command_buffers : public T {
@@ -615,7 +617,7 @@ using draw_triangle_app =
 	add_queue <
 	rename_buffer_to_vertex_buffer<
 	add_buffer_memory_with_data_copy <
-	add_buffer <
+	add_buffer_as_member <
 	set_buffer_usage<vk::BufferUsageFlagBits::eVertexBuffer,
 	add_triangle_vertex_buffer_data <
 	add_recreate_surface_for_pipeline <
@@ -770,6 +772,13 @@ using draw_triangle_app =
 		}
 	};
 	template<class T>
+	class add_cube_fragment_shader_path : public T {
+	public:
+		auto get_file_path() {
+			return std::filesystem::path{ "cube_frag.spv" };
+		}
+	};
+	template<class T>
 	class add_cube_descriptor_set_layout_binding : public T {
 	public:
 		using parent = T;
@@ -799,13 +808,13 @@ using draw_triangle_app =
 		}
 		void create() {
 			vk::Device device = parent::get_device();
-
+			uint32_t count = parent::get_swapchain_images().size();
 			auto pool_sizes = vk::DescriptorPoolSize{}
-				.setDescriptorCount(1)
+				.setDescriptorCount(count)
 				.setType(vk::DescriptorType::eUniformBuffer);
 			m_pool = device.createDescriptorPool(
 				vk::DescriptorPoolCreateInfo{}
-				.setMaxSets(1)
+				.setMaxSets(count)
 				.setPoolSizes(pool_sizes)
 			);
 		}
@@ -834,13 +843,15 @@ using draw_triangle_app =
 			vk::Device device = parent::get_device();
 			vk::DescriptorPool pool = parent::get_descriptor_pool();
 			vk::DescriptorSetLayout layout = parent::get_descriptor_set_layout();
-
+			uint32_t count = parent::get_swapchain_images().size();
+			std::vector<vk::DescriptorSetLayout> layouts(count);
+			std::ranges::for_each(layouts, [layout](auto& l) {l = layout; });
 			m_set = device.allocateDescriptorSets(
 				vk::DescriptorSetAllocateInfo{}
 				.setDescriptorPool(pool)
-				.setDescriptorSetCount(1)
-				.setSetLayouts(layout)
-			)[0];
+				.setDescriptorSetCount(count)
+				.setSetLayouts(layouts)
+			);
 		}
 		void destroy() {
 		}
@@ -848,7 +859,15 @@ using draw_triangle_app =
 			return m_set;
 		}
 	private:
-		vk::DescriptorSet m_set;
+		std::vector<vk::DescriptorSet> m_set;
+	};
+	template<class T>
+	class set_vector_size_to_swapchain_image_count : public T {
+	public:
+		using parent = T;
+		auto get_vector_size() {
+			return parent::get_swapchain_images().size();
+		}
 	};
 	template<class T>
 	class write_descriptor_set : public T {
@@ -859,27 +878,33 @@ using draw_triangle_app =
 		}
 		auto create() {
 			vk::Device device = parent::get_device();
-			vk::Buffer buffer = parent::get_storage_buffer();
-			vk::DescriptorSet set = parent::get_descriptor_set();
+			std::vector<vk::Buffer> buffers = parent::get_uniform_buffer_vector();
+			std::vector<vk::DescriptorSet> sets = parent::get_descriptor_set();
 
-			auto buffer_info = vk::DescriptorBufferInfo{}
-			.setBuffer(buffer)
-				.setRange(vk::WholeSize);
-			device.updateDescriptorSets(
-				vk::WriteDescriptorSet{}
-				.setDstSet(set)
-				.setDescriptorCount(1)
-				.setDescriptorType(vk::DescriptorType::eUniformBuffer)
-				.setDstBinding(0)
-				.setBufferInfo(buffer_info),
-				{}
-			);
+			std::vector<vk::WriteDescriptorSet> writes(sets.size());
+			for (uint32_t i = 0; i < sets.size(); i++) {
+				auto buffer = buffers[i];
+				auto set = sets[i];
+				auto& write = writes[i];
+
+				auto buffer_info = vk::DescriptorBufferInfo{}
+					.setBuffer(buffer)
+					.setRange(vk::WholeSize);
+				write = 
+					vk::WriteDescriptorSet{}
+					.setDstSet(set)
+					.setDescriptorCount(1)
+					.setDescriptorType(vk::DescriptorType::eUniformBuffer)
+					.setDstBinding(0)
+					.setBufferInfo(buffer_info);
+			}
+			device.updateDescriptorSets(writes, {});
 		}
 	};
 	using draw_cube_app =
 		add_window_loop <
 		jump_draw_if_window_minimized <
-		add_draw <
+		add_dynamic_draw <
 		add_acquire_next_image_semaphores <
 		add_acquire_next_image_semaphore_fences <
 		add_draw_semaphores <
@@ -895,20 +920,30 @@ using draw_triangle_app =
 		add_descriptor_pool<
 		add_buffer_memory_with_data_copy<
 		rename_buffer_to_index_buffer<
-		add_buffer<
+		add_buffer_as_member<
 		set_buffer_usage<vk::BufferUsageFlagBits::eIndexBuffer,
 		add_cube_index_buffer_data<
-		rename_buffer_to_storage_buffer<
-		add_buffer_memory<
+		rename_buffer_vector_to_uniform_upload_buffer_vector <
+		rename_buffer_memory_vector_to_uniform_upload_buffer_memory_vector<
+		rename_buffer_memory_ptr_vector_to_uniform_upload_buffer_memory_ptr_vector<
+		map_buffer_memory_vector<
+		add_buffer_memory_vector<
+		set_buffer_memory_properties < vk::MemoryPropertyFlagBits::eHostVisible,
+		add_buffer_vector<
+		set_vector_size_to_swapchain_image_count<
+		set_buffer_usage<vk::BufferUsageFlagBits::eTransferSrc,
+		rename_buffer_vector_to_uniform_buffer_vector<
+		add_buffer_memory_vector<
 		set_buffer_memory_properties<vk::MemoryPropertyFlagBits::eDeviceLocal,
-		add_buffer<
+		add_buffer_vector<
+		set_vector_size_to_swapchain_image_count <
 		add_buffer_usage<vk::BufferUsageFlagBits::eTransferDst,
 		add_buffer_usage<vk::BufferUsageFlagBits::eUniformBuffer,
 		empty_buffer_usage<
 		set_buffer_size<sizeof(uint64_t),
 		add_buffer_memory_with_data_copy <
 		rename_buffer_to_vertex_buffer<
-		add_buffer <
+		add_buffer_as_member <
 		set_buffer_usage<vk::BufferUsageFlagBits::eVertexBuffer,
 		add_cube_vertex_buffer_data <
 		add_recreate_surface_for_pipeline <
@@ -959,7 +994,7 @@ using draw_triangle_app =
 		cache_file_size <
 		add_file_mapping <
 		add_file <
-		add_fragment_shader_path <
+		add_cube_fragment_shader_path <
 		add_empty_pipeline_stages <
 		add_pipeline_layout <
 		add_single_descriptor_set_layout<
@@ -1008,7 +1043,8 @@ using draw_triangle_app =
 		empty_class
 		>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> >
 		>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> >
-		>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+		>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+		>>>>>>>>
 		;
 using clear_debug_app = 
 	add_window_loop <
