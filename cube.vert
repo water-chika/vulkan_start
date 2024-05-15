@@ -33,5 +33,5 @@ void main() {
         0, 0, 0, 1
     );
     gl_Position = persp * move * rotate_y * rotate_z * vec4(vertex, 1);
-    color = vertex;
+    color = (vertex+1)/2;
 }
