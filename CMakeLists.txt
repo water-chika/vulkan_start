@@ -25,6 +25,12 @@ add_executable(cube
 target_link_libraries(cube PUBLIC vulkan_helper)
 set_target_properties(cube PROPERTIES CXX_STANDARD 23)
 
+add_executable(ray_tracing
+    ray_tracing.cpp
+)
+target_link_libraries(ray_tracing PUBLIC vulkan_helper)
+set_target_properties(ray_tracing PROPERTIES CXX_STANDARD 23)
+
 add_custom_command(OUTPUT vert.spv
   COMMAND Vulkan::glslangValidator --target-env vulkan1.3
               ${CMAKE_CURRENT_SOURCE_DIR}/test.vert
