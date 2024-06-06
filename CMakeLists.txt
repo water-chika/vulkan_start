@@ -16,7 +16,8 @@ target_link_libraries(triangle PUBLIC vulkan_helper)
 set_target_properties(triangle PROPERTIES CXX_STANDARD 23)
 
 add_executable(cube
-    main.cpp
+    cube_windows.cpp
+    cube.hpp
     cube.vert
     cube_vert.spv
     cube.frag
