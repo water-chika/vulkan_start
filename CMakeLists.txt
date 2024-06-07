@@ -35,7 +35,7 @@ target_link_libraries(ray_tracing PUBLIC vulkan_helper)
 set_target_properties(ray_tracing PROPERTIES CXX_STANDARD 23)
 
 else()
-
+find_library(wayland-client wayland-client)
 add_executable(cube
     cube_linux.cpp
     cube.hpp
@@ -44,7 +44,7 @@ add_executable(cube
     cube.frag
     cube_frag.spv
 )
-target_link_libraries(cube PUBLIC vulkan_helper)
+target_link_libraries(cube PUBLIC vulkan_helper wayland-client)
 set_target_properties(cube PROPERTIES CXX_STANDARD 23)
 
 endif()
