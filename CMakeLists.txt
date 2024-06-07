@@ -5,6 +5,8 @@ project(vulkan_start)
 find_package(Vulkan REQUIRED)
 add_subdirectory(vulkan_helper)
 
+if(WIN32)
+
 add_executable(triangle
     triangle.cpp
     vert.spv
@@ -31,6 +33,22 @@ add_executable(ray_tracing
 )
 target_link_libraries(ray_tracing PUBLIC vulkan_helper)
 set_target_properties(ray_tracing PROPERTIES CXX_STANDARD 23)
+
+else()
+
+add_executable(cube
+    cube_linux.cpp
+    cube.hpp
+    cube.vert
+    cube_vert.spv
+    cube.frag
+    cube_frag.spv
+)
+target_link_libraries(cube PUBLIC vulkan_helper)
+set_target_properties(cube PROPERTIES CXX_STANDARD 23)
+
+endif()
+
 
 add_custom_command(OUTPUT vert.spv
   COMMAND Vulkan::glslangValidator --target-env vulkan1.3
