@@ -51,6 +51,59 @@ namespace wl_helper{
             parent::event_loop();
         }
     };
+    template<class T>
+    class add_registry_listener : public T{
+    public:
+        using parent = T;
+        add_registry_listener() {
+            wl_registry* registry = parent::get_registry();
+            wl_registry_listener listener = {
+                .global = parent::registry_handle_global,
+                .global_remove = parent::registry_handle_global_remove,
+            };
+            // listener is referenced but does not used immediately, so I use display_roundtrip to use it.
+            wl_registry_add_listener(registry, &listener, parent::get_registry_listener_user_data());
+            auto display = parent::get_display();
+            wl_display_roundtrip(display);
+        }
+    };
+    template<class T>
+    class cache_registry : public T{
+    public:
+        using parent = T;
+        cache_registry() {
+            auto display = parent::get_display();
+            m_registry = wl_display_get_registry(display);
+        }
+        auto get_registry() {
+            return m_registry;
+        }
+    private:
+        wl_registry* m_registry;
+    };
+    template<class T>
+    class add_registry_listener_callbacks : public T{
+    public:
+        static
+            void registry_handle_global(
+                void* data,
+                wl_registry* registry,
+                uint32_t name,
+                const char* interface,
+                uint32_t version
+                ) {
+        }
+        static
+            void registry_handle_global_remove(
+                    void* data,
+                    wl_registry* registry,
+                    uint32_t name
+                    ) {
+        }
+        void* get_registry_listener_user_data() {
+            return this;
+        }
+    };
 }
 
 struct none_t{};
@@ -60,10 +113,13 @@ using namespace wl_helper;
 using app =
     run_event_loop<
     add_event_loop<
+    add_registry_listener<
+    cache_registry<
+    add_registry_listener_callbacks<
     add_display<
     set_default_display_name<
     none_t
-    >>>>
+    >>>>>>>
 ;
 
 int main() {
