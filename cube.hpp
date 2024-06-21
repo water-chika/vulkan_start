@@ -566,14 +566,17 @@ private:
 			std::vector<vk::DescriptorSet> sets = parent::get_descriptor_set();
 
 			std::vector<vk::WriteDescriptorSet> writes(sets.size());
+            std::vector<vk::DescriptorBufferInfo> buffer_infos(sets.size());
 			for (uint32_t i = 0; i < sets.size(); i++) {
-				auto buffer = buffers[i];
-				auto set = sets[i];
+				auto& buffer = buffers[i];
+				auto& set = sets[i];
 				auto& write = writes[i];
+				auto& buffer_info = buffer_infos[i];
 
-				auto buffer_info = vk::DescriptorBufferInfo{}
+                buffer_info = vk::DescriptorBufferInfo{}
 					.setBuffer(buffer)
 					.setRange(vk::WholeSize);
+
 				write = 
 					vk::WriteDescriptorSet{}
 					.setDstSet(set)
