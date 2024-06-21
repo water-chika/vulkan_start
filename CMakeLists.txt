@@ -38,6 +38,7 @@ else()
 find_library(wayland-client wayland-client)
 add_executable(cube
     cube_linux.cpp
+    xdg-shell-protocol.c
     cube.hpp
     cube.vert
     cube_vert.spv
