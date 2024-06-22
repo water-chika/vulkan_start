@@ -277,7 +277,8 @@ namespace wl_helper{
     public:
         using parent = T;
         void event_loop() {
-            while (wl_display_dispatch(parent::get_wayland_display()) != -1) {
+            while (!parent::get_event_loop_should_exit()
+                    && wl_display_dispatch(parent::get_wayland_display()) != -1) {
                 parent::draw();
             }
         }
@@ -439,6 +440,9 @@ public:
     }
     auto get_surface_resolution() {
         return std::pair{640, 480};
+    }
+    auto get_event_loop_should_exit() {
+        return state.closed;
     }
 private:
         struct our_state state;
