@@ -82,7 +82,7 @@ const struct wl_buffer_listener buffer_listener = {
 };
 static
 struct wl_buffer* draw_frame(struct our_state* state) {
-    const int width = 640, height = 480;
+    const int width = state->width, height = state->height;
     int stride = width * 4;
     int size = stride * height;
     int fd = allocate_shm_file(size);
@@ -204,7 +204,14 @@ static const struct xdg_toplevel_listener xdg_toplevel_listener = {
     .configure = xdg_toplevel_configure,
     .close = xdg_toplevel_close,
 };
-
+static
+void wl_surface_frame_done(
+        void* data, struct wl_callback* cb, uint32_t time
+			   );
+static
+const struct wl_callback_listener wl_surface_frame_listener = {
+    .done = wl_surface_frame_done,
+};
 
 static
 void wl_surface_frame_done(
@@ -213,27 +220,19 @@ void wl_surface_frame_done(
     wl_callback_destroy(cb);
 
     struct our_state* state = (struct our_state*)data;
-    //cb = wl_surface_frame(state->surface);
-    //wl_callback_add_listener(cb, &wl_surface_frame_listener, state);
+    cb = wl_surface_frame(state->surface);
+    wl_callback_add_listener(cb, &wl_surface_frame_listener, state);
 
     if (state->last_frame != 0) {
         int elapsed = time - state->last_frame;
         state->offset += elapsed / 1000.0 * 24;
     }
 
-    struct wl_buffer* buffer = draw_frame(state);
-    wl_surface_attach(state->surface, buffer, 0, 0);
     wl_surface_damage_buffer(state->surface, 0, 0, INT32_MAX, INT32_MAX);
     wl_surface_commit(state->surface);
 
     state->last_frame = time;
 }
-
-static
-const struct wl_callback_listener wl_surface_frame_listener = {
-    .done = wl_surface_frame_done,
-};
-
 
 #include <iostream>
 #include <map>
@@ -396,6 +395,7 @@ template<class T>
 class add_wayland_surface : public T{
 public:
     add_wayland_surface() : state{}{
+        state.width = 640, state.height = 480;
         state.display = wl_display_connect(NULL);
         if (!state.display) {
             fprintf(stderr, "Failed to connect to Wayland display.\n");
@@ -418,19 +418,11 @@ public:
         wl_surface_commit(state.surface);
 
         wl_display_roundtrip(state.display);
+
+        struct wl_callback* cb = wl_surface_frame(state.surface);
+        wl_callback_add_listener(cb, &wl_surface_frame_listener, &state);
+        wl_surface_commit(state.surface);
         wl_display_roundtrip(state.display);
-        wl_display_roundtrip(state.display);
-        wl_display_roundtrip(state.display);
-
-        //struct wl_callback* cb = wl_surface_frame(state.surface);
-        //wl_callback_add_listener(cb, &wl_surface_frame_listener, &state);
-
-
-        //while (!state.closed && wl_display_dispatch(state.display) != -1) {
-        //}
-
-        //wl_display_disconnect(state.display);
-        //return 0;
     }
     auto get_wayland_display() {
         return state.display;
