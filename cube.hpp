@@ -369,11 +369,17 @@ public:
 		vk::Device device = parent::get_device();
 		vk::PipelineShaderStageCreateInfo stage = parent::get_shader_stage();
 
-		m_pipeline = device.createComputePipeline(
+		auto res_value = device.createComputePipeline(
 			nullptr,
 			vk::ComputePipelineCreateInfo{}
 			.setStage(stage)
 		);
+        if (res_value.result == vk::Result::eSuccess) {
+            m_pipeline = res_value.value;
+        }
+        else {
+            throw std::runtime_error{"failed to create compute pipeline"};
+        }
 	}
 	void destroy() {
 		vk::Device device = parent::get_device();
