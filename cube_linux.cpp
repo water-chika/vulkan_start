@@ -2,53 +2,48 @@
 #include "cube.hpp"
 #include "wayland_window.hpp"
 
-template<class T>
-class add_vulkan_surface : public T{
+template <class T> class add_vulkan_surface : public T {
 public:
-    using parent = T;
-    add_vulkan_surface() {
-        auto instance = parent::get_instance();
-        auto display = parent::get_wayland_display();
-        auto surface = parent::get_wayland_surface();
+  using parent = T;
+  add_vulkan_surface() {
+    auto instance = parent::get_instance();
+    auto display = parent::get_wayland_display();
+    auto surface = parent::get_wayland_surface();
 
-        m_surface = instance.createWaylandSurfaceKHR(
-                vk::WaylandSurfaceCreateInfoKHR{}
-                .setDisplay(display)
-                .setSurface(surface)
-                );
-    }
-    auto get_surface() {
-        return m_surface;
-    }
+    m_surface = instance.createWaylandSurfaceKHR(
+        vk::WaylandSurfaceCreateInfoKHR{}.setDisplay(display).setSurface(
+            surface));
+  }
+  auto get_surface() { return m_surface; }
+
 private:
-    vk::SurfaceKHR m_surface;
+  vk::SurfaceKHR m_surface;
 };
 
 using namespace vulkan_hpp_helper;
-template<class T>
-class add_wayland_surface_extension : public T {
+template <class T> class add_wayland_surface_extension : public T {
 public:
-    auto get_extensions() {
-        auto ext = T::get_extensions();
-        ext.push_back(vk::KHRWaylandSurfaceExtensionName);
-        return ext;
-    }
+  auto get_extensions() {
+    auto ext = T::get_extensions();
+    ext.push_back(vk::KHRWaylandSurfaceExtensionName);
+    return ext;
+  }
 };
 
-template<class T>
-class add_dummy_recreate_surface : public T{
+template <class T> class add_dummy_recreate_surface : public T {
 public:
-    void recreate_surface() {
-    }
+  void recreate_surface() {}
 };
-template<class T>
+
+template <class T>
 class add_swapchain_image_extent_equal_surface_resolution : public T {
 public:
-    using parent = T;
-    auto get_swapchain_image_extent() {
-        auto [width, height] = parent::get_surface_resolution();
-        return vk::Extent2D{static_cast<uint32_t>(width), static_cast<uint32_t>(height)};
-    }
+  using parent = T;
+  auto get_swapchain_image_extent() {
+    auto [width, height] = parent::get_surface_resolution();
+    return vk::Extent2D{static_cast<uint32_t>(width),
+                        static_cast<uint32_t>(height)};
+  }
 };
 
 using app =
@@ -199,6 +194,6 @@ using app =
 ;
 
 int main() {
-    app app{};
-    return 0;
+  app app{};
+  return 0;
 }
