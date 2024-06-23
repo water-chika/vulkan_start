@@ -245,6 +245,18 @@ public:
       vk::Buffer upload_buffer = uniform_upload_buffers[index];
       cmd.copyBuffer(upload_buffer, uniform_buffer,
                      vk::BufferCopy{}.setSize(sizeof(uint64_t)));
+      auto uniform_buffer_memory_barrier =
+          vk::BufferMemoryBarrier{}
+              .setSrcAccessMask(vk::AccessFlagBits::eTransferWrite)
+              .setDstAccessMask(vk::AccessFlagBits::eUniformRead)
+              .setSrcQueueFamilyIndex(queue_family_index)
+              .setDstQueueFamilyIndex(queue_family_index)
+              .setBuffer(uniform_buffer)
+              .setOffset(0)
+              .setSize(vk::WholeSize);
+      cmd.pipelineBarrier(vk::PipelineStageFlagBits::eTransfer,
+                          vk::PipelineStageFlagBits::eVertexShader, {}, {},
+                          uniform_buffer_memory_barrier, {});
 
       vk::RenderPass render_pass = parent::get_render_pass();
 
@@ -597,7 +609,7 @@ public:
             vk::ImageLayout::eColorAttachmentOptimal);
     auto depth_attachment =
         vk::AttachmentReference{}.setAttachment(1).setLayout(
-            vk::ImageLayout::eGeneral);
+            vk::ImageLayout::eDepthStencilAttachmentOptimal);
     auto subpasses =
         std::array{vk::SubpassDescription{}
                        .setColorAttachments(color_attachment)
