@@ -9,10 +9,10 @@ if(WIN32)
 
 add_executable(triangle
     triangle.cpp
-    vert.spv
-    test.vert
-    frag.spv
-    test.frag
+    shaders/vert.spv
+    shaders/test.vert
+    shaders/frag.spv
+    shaders/test.frag
 )
 target_link_libraries(triangle PUBLIC vulkan_helper)
 set_target_properties(triangle PROPERTIES CXX_STANDARD 23)
@@ -21,9 +21,9 @@ add_executable(cube
     cube_windows.cpp
     cube.hpp
     cube.vert
-    cube_vert.spv
-    cube.frag
-    cube_frag.spv
+    shaders/cube_vert.spv
+    shaders/cube.frag
+    shaders/cube_frag.spv
 )
 target_link_libraries(cube PUBLIC vulkan_helper)
 set_target_properties(cube PROPERTIES CXX_STANDARD 23)
@@ -40,10 +40,10 @@ add_executable(cube
     cube_linux.cpp
     wayland/xdg-shell-protocol.c
     cube.hpp
-    cube.vert
-    cube_vert.spv
-    cube.frag
-    cube_frag.spv
+    shaders/cube.vert
+    shaders/cube_vert.spv
+    shaders/cube.frag
+    shaders/cube_frag.spv
 )
 target_link_libraries(cube PUBLIC vulkan_helper wayland-client)
 target_include_directories(cube PUBLIC wayland)
@@ -51,27 +51,32 @@ set_target_properties(cube PROPERTIES CXX_STANDARD 23)
 
 endif()
 
+file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/shaders)
 
-add_custom_command(OUTPUT vert.spv
+add_custom_command(OUTPUT shaders/vert.spv
   COMMAND Vulkan::glslangValidator --target-env vulkan1.3
-              ${CMAKE_CURRENT_SOURCE_DIR}/test.vert
-  MAIN_DEPENDENCY ${CMAKE_CURRENT_SOURCE_DIR}/test.vert
-  DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/test.vert Vulkan::glslangValidator)
+              ${CMAKE_CURRENT_SOURCE_DIR}/shaders/test.vert
+	      -o ${CMAKE_CURRENT_BINARY_DIR}/shaders/vert.spv
+  MAIN_DEPENDENCY ${CMAKE_CURRENT_SOURCE_DIR}/shaders/test.vert
+  DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/shaders/test.vert Vulkan::glslangValidator)
 
-add_custom_command(OUTPUT cube_vert.spv
+add_custom_command(OUTPUT shaders/cube_vert.spv
   COMMAND Vulkan::glslangValidator --target-env vulkan1.3
-              ${CMAKE_CURRENT_SOURCE_DIR}/cube.vert -o cube_vert.spv
-  MAIN_DEPENDENCY ${CMAKE_CURRENT_SOURCE_DIR}/cube.vert
-  DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/cube.vert Vulkan::glslangValidator)
+              ${CMAKE_CURRENT_SOURCE_DIR}/shaders/cube.vert
+	      -o ${CMAKE_CURRENT_BINARY_DIR}/shaders/cube_vert.spv
+  MAIN_DEPENDENCY ${CMAKE_CURRENT_SOURCE_DIR}/shaders/cube.vert
+  DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/shaders/cube.vert Vulkan::glslangValidator)
 
-  add_custom_command(OUTPUT frag.spv
+  add_custom_command(OUTPUT shaders/frag.spv
   COMMAND Vulkan::glslangValidator --target-env vulkan1.3
-              ${CMAKE_CURRENT_SOURCE_DIR}/test.frag
-  MAIN_DEPENDENCY ${CMAKE_CURRENT_SOURCE_DIR}/test.frag
-  DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/test.frag Vulkan::glslangValidator)
+              ${CMAKE_CURRENT_SOURCE_DIR}/shaders/test.frag
+	      -o ${CMAKE_CURRENT_BINARY_DIR}/shaders/frag.spv
+  MAIN_DEPENDENCY ${CMAKE_CURRENT_SOURCE_DIR}/shaders/test.frag
+  DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/shaders/test.frag Vulkan::glslangValidator)
 
-  add_custom_command(OUTPUT cube_frag.spv
+  add_custom_command(OUTPUT shaders/cube_frag.spv
   COMMAND Vulkan::glslangValidator --target-env vulkan1.3
-              ${CMAKE_CURRENT_SOURCE_DIR}/cube.frag -o cube_frag.spv
-  MAIN_DEPENDENCY ${CMAKE_CURRENT_SOURCE_DIR}/cube.frag
-  DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/cube.frag Vulkan::glslangValidator)
+              ${CMAKE_CURRENT_SOURCE_DIR}/shaders/cube.frag
+	      -o ${CMAKE_CURRENT_BINARY_DIR}/shaders/cube_frag.spv
+  MAIN_DEPENDENCY ${CMAKE_CURRENT_SOURCE_DIR}/shaders/cube.frag
+  DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/shaders/cube.frag Vulkan::glslangValidator)
