@@ -201,7 +201,7 @@ using draw_cube_app =
 	add_buffer_as_member <
 	set_buffer_usage<vk::BufferUsageFlagBits::eVertexBuffer,
 	add_cube_vertex_buffer_data <
-	add_recreate_surface_for_pipeline <
+	add_recreate_surface_for<
 	add_graphics_pipeline <
 	add_pipeline_vertex_input_state <
 	add_vertex_binding_description <

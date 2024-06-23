@@ -6,6 +6,12 @@ template <class T> class add_vulkan_surface : public T {
 public:
   using parent = T;
   add_vulkan_surface() {
+      create();
+  }
+  ~add_vulkan_surface() {
+      destroy();
+  }
+  void create() {
     auto instance = parent::get_instance();
     auto display = parent::get_wayland_display();
     auto surface = parent::get_wayland_surface();
@@ -14,7 +20,7 @@ public:
         vk::WaylandSurfaceCreateInfoKHR{}.setDisplay(display).setSurface(
             surface));
   }
-  ~add_vulkan_surface() {
+  void destroy() {
     auto instance = parent::get_instance();
     instance.destroySurfaceKHR(m_surface);
   }
@@ -95,6 +101,9 @@ template <class T> class barrier_depth_image_layout : public T {
 public:
   using parent = T;
   barrier_depth_image_layout() {
+      create();
+  }
+  void create() {
     auto device = parent::get_device();
     auto cmd_pool = parent::get_command_pool();
     auto images = parent::get_images();
@@ -103,18 +112,39 @@ public:
     water_chika_vulkan_barrier_depth_image_layout(device, queue_family_index,
                                                   queue, cmd_pool, images);
   }
+  void destroy() {
+  }
+};
+
+template<class T>
+class register_size_change_callback : public T{
+public:
+    using parent = T;
+    using this_type = register_size_change_callback<T>;
+    register_size_change_callback() {
+        parent::set_size_changed_callback(size_changed_callback, this);
+    }
+    static void size_changed_callback(int width, int height, void* data) {
+        auto th = reinterpret_cast<this_type*>(data);
+        th->size_changed(width, height);
+    }
+    void size_changed(int width, int height) {
+        parent::recreate_surface();
+    }
 };
 
 using app =
     run_event_loop<
     add_event_loop<
     add_dynamic_draw <
-    add_dummy_recreate_surface<
     add_acquire_next_image_semaphores <
     add_acquire_next_image_semaphore_fences <
     add_draw_semaphores <
+    register_size_change_callback<
+    add_recreate_surface_for<
     record_swapchain_command_buffers_cube <
     add_get_format_clear_color_value_type <
+    add_recreate_surface_for<
     add_swapchain_command_buffers <
     write_descriptor_set<
     add_nonfree_descriptor_set<
@@ -147,6 +177,7 @@ using app =
     add_buffer_as_member <
     set_buffer_usage<vk::BufferUsageFlagBits::eVertexBuffer,
     add_cube_vertex_buffer_data <
+    add_recreate_surface_for<
     add_graphics_pipeline <
     add_pipeline_vertex_input_state <
     add_vertex_binding_description <
@@ -158,6 +189,7 @@ using app =
     set_stride < sizeof(float) * 3,
     set_input_rate < vk::VertexInputRate::eVertex,
     set_subpass < 0,
+    add_recreate_surface_for<
     add_framebuffers_cube <
     add_render_pass_cube <
     add_subpasses <
@@ -209,11 +241,15 @@ using app =
     disable_pipeline_attachment_color_blend < 0, // disable index 0 attachment
     add_pipeline_color_blend_attachment_states < 1, // 1 attachment
     rename_images_views_to_depth_images_views<
+    add_recreate_surface_for<
     add_depth_images_views_cube<
+    add_recreate_surface_for<
     barrier_depth_image_layout<
+    add_recreate_surface_for<
     add_images_memories<
     add_image_memory_property<vk::MemoryPropertyFlagBits::eDeviceLocal,
     add_empty_image_memory_properties<
+    add_recreate_surface_for<
     add_images<
     add_image_type<vk::ImageType::e2D,
     set_image_tiling<vk::ImageTiling::eOptimal,
@@ -224,8 +260,11 @@ using app =
     rename_image_format_to_depth_image_format<
     add_image_format<vk::Format::eD32Sfloat,
     add_image_count_equal_swapchain_image_count<
+    add_recreate_surface_for<
     add_swapchain_images_views <
+    add_recreate_surface_for<
     add_swapchain_images <
+    add_recreate_surface_for<
     add_swapchain <
     add_swapchain_image_extent_equal_surface_resolution<
     add_swapchain_image_format <
@@ -236,11 +275,15 @@ using app =
     add_empty_extensions <
     add_find_properties <
     cache_physical_device_memory_properties<
+    add_recreate_surface_for<
     cache_surface_capabilities<
+    add_recreate_surface_for<
     test_physical_device_support_surface<
     add_queue_family_index <
     add_physical_device<
+    add_recreate_surface_for<
     add_vulkan_surface<
+    add_dummy_recreate_surface<
     add_instance<
     add_wayland_surface_extension<
     add_surface_extension<
@@ -249,7 +292,7 @@ using app =
     none_t
     >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
     >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-    >>>>>>>>>>>>>>>>>>>>
+    >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
     >>>>>>>>>>>>>>>>>>>>
 ;
 

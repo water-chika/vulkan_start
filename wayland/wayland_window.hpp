@@ -68,6 +68,9 @@ struct our_state {
   uint32_t last_frame;
   int width, height;
   bool closed;
+  bool size_changed;
+  void (*size_changed_callback)(int, int, void*);
+  void* size_changed_callback_user_data;
 };
 
 static void buffer_release(void *data, struct wl_buffer *buffer) {
@@ -169,8 +172,17 @@ static void xdg_toplevel_configure(void *data,
   if (width == 0 || height == 0) {
     return;
   }
-  state->width = width;
-  state->height = height;
+  if (width != state->width || height != state->height) {
+      state->width = width;
+      state->height = height;
+      state->size_changed = true;
+      struct wl_buffer *buffer = draw_frame(state);
+      wl_surface_attach(state->surface, buffer, 0, 0);
+      wl_surface_commit(state->surface);
+      wl_display_roundtrip(state->display);
+      state->size_changed_callback(width, height,
+              state->size_changed_callback_user_data);
+  }
 }
 
 static void xdg_toplevel_close(void *data, struct xdg_toplevel *toplevel) {
@@ -337,9 +349,23 @@ struct none_t {};
 
 using namespace wl_helper;
 
+void water_chika_set_size_changed_callback(
+        our_state& state,
+        void (*callback)(int, int, void*), void* user_data) {
+      if (state.size_changed) {
+          callback(state.width, state.height, user_data);
+          state.size_changed = false;
+      }
+      state.size_changed_callback = callback;
+      state.size_changed_callback_user_data = user_data;
+}
+
 template <class T> class add_wayland_surface : public T {
 public:
+    static void dummy_size_changed_callback(int, int, void*) {
+    }
   add_wayland_surface() : state{} {
+      state.size_changed_callback = dummy_size_changed_callback;
     state.width = 640, state.height = 480;
     state.display = wl_display_connect(NULL);
     if (!state.display) {
@@ -370,8 +396,11 @@ public:
   }
   auto get_wayland_display() { return state.display; }
   auto get_wayland_surface() { return state.surface; }
-  auto get_surface_resolution() { return std::pair{640, 480}; }
+  auto get_surface_resolution() { return std::pair{state.width, state.height}; }
   auto get_event_loop_should_exit() { return state.closed; }
+  void set_size_changed_callback(void (*callback)(int, int, void*), void* user_data) {
+      water_chika_set_size_changed_callback(state, callback, user_data);
+  }
 
 private:
   struct our_state state;

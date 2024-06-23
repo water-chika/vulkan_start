@@ -528,6 +528,12 @@ public:
   using parent = T;
   add_framebuffers_cube() { create_framebuffers(); }
   ~add_framebuffers_cube() { destroy_framebuffers(); }
+  void create() {
+      create_framebuffers();
+  }
+  void destroy() {
+      destroy_framebuffers();
+  }
   void create_framebuffers() {
     vk::Device device = parent::get_device();
     vk::RenderPass render_pass = parent::get_render_pass();
