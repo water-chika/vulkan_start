@@ -38,7 +38,7 @@ else()
 find_library(wayland-client wayland-client)
 add_executable(cube
     cube_linux.cpp
-    xdg-shell-protocol.c
+    wayland/xdg-shell-protocol.c
     cube.hpp
     cube.vert
     cube_vert.spv
@@ -46,6 +46,7 @@ add_executable(cube
     cube_frag.spv
 )
 target_link_libraries(cube PUBLIC vulkan_helper wayland-client)
+target_include_directories(cube PUBLIC wayland)
 set_target_properties(cube PROPERTIES CXX_STANDARD 23)
 
 endif()
