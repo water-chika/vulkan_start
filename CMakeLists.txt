@@ -20,7 +20,7 @@ set_target_properties(triangle PROPERTIES CXX_STANDARD 23)
 add_executable(cube
     cube_windows.cpp
     cube.hpp
-    cube.vert
+    shaders/cube.vert
     shaders/cube_vert.spv
     shaders/cube.frag
     shaders/cube_frag.spv

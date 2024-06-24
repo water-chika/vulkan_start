@@ -56,66 +56,6 @@ public:
   }
 };
 
-static void water_chika_vulkan_barrier_depth_image_layout(
-    vk::Device device, uint32_t queue_family_index, vk::Queue queue,
-    vk::CommandPool cmd_pool, std::vector<vk::Image> images) {
-  auto cmds = device.allocateCommandBuffers(
-      vk::CommandBufferAllocateInfo{}
-          .setCommandPool(cmd_pool)
-          .setLevel(vk::CommandBufferLevel::ePrimary)
-          .setCommandBufferCount(1));
-  auto cmd = cmds[0];
-
-  cmd.begin(vk::CommandBufferBeginInfo{});
-
-  std::vector<vk::ImageMemoryBarrier> depth_image_barriers(images.size());
-  std::ranges::transform(
-      images, depth_image_barriers.begin(), [queue_family_index](auto &image) {
-        return vk::ImageMemoryBarrier{}
-            .setSrcAccessMask(vk::AccessFlagBits::eTransferWrite)
-            .setDstAccessMask(vk::AccessFlagBits::eUniformRead)
-            .setSrcQueueFamilyIndex(queue_family_index)
-            .setDstQueueFamilyIndex(queue_family_index)
-            .setOldLayout(vk::ImageLayout::eUndefined)
-            .setNewLayout(vk::ImageLayout::eDepthStencilAttachmentOptimal)
-            .setImage(image)
-            .setSubresourceRange(
-                vk::ImageSubresourceRange{}
-                    .setAspectMask(vk::ImageAspectFlagBits::eDepth)
-                    .setLevelCount(1)
-                    .setLayerCount(1));
-      });
-
-  cmd.pipelineBarrier(vk::PipelineStageFlagBits::eTopOfPipe,
-                      vk::PipelineStageFlagBits::eEarlyFragmentTests, {}, {},
-                      {}, depth_image_barriers);
-  cmd.end();
-
-  queue.submit(vk::SubmitInfo{}.setCommandBuffers(cmd));
-  queue.waitIdle();
-
-  device.freeCommandBuffers(cmd_pool, cmd);
-}
-
-template <class T> class barrier_depth_image_layout : public T {
-public:
-  using parent = T;
-  barrier_depth_image_layout() {
-      create();
-  }
-  void create() {
-    auto device = parent::get_device();
-    auto cmd_pool = parent::get_command_pool();
-    auto images = parent::get_images();
-    auto queue_family_index = parent::get_queue_family_index();
-    auto queue = parent::get_queue();
-    water_chika_vulkan_barrier_depth_image_layout(device, queue_family_index,
-                                                  queue, cmd_pool, images);
-  }
-  void destroy() {
-  }
-};
-
 template<class T>
 class register_size_change_callback : public T{
 public:

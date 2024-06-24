@@ -168,8 +168,6 @@ using draw_cube_app =
 	add_get_format_clear_color_value_type <
 	add_recreate_surface_for <
 	add_swapchain_command_buffers <
-	add_command_pool <
-	add_queue <
 	write_descriptor_set<
 	add_nonfree_descriptor_set<
 	add_descriptor_pool<
@@ -213,7 +211,7 @@ using draw_cube_app =
 	set_stride < sizeof(float) * 3,
 	set_input_rate < vk::VertexInputRate::eVertex,
 	set_subpass < 0,
-	add_recreate_surface_for_framebuffers <
+	add_recreate_surface_for <
 	add_framebuffers_cube <
 	add_render_pass_cube <
 	add_subpasses <
@@ -266,12 +264,14 @@ using draw_cube_app =
 	add_pipeline_color_blend_attachment_states < 1, // 1 attachment
 	rename_images_views_to_depth_images_views<
 	add_recreate_surface_for<
+	barrier_depth_image_layout<
+	add_recreate_surface_for<
 	add_depth_images_views_cube<
-	add_recreate_surface_for_images_memories<
+	add_recreate_surface_for<
 	add_images_memories<
 	add_image_memory_property<vk::MemoryPropertyFlagBits::eDeviceLocal,
 	add_empty_image_memory_properties<
-	add_recreate_surface_for_images<
+	add_recreate_surface_for<
 	add_images<
 	add_image_type<vk::ImageType::e2D,
 	set_image_tiling<vk::ImageTiling::eOptimal,
@@ -282,20 +282,22 @@ using draw_cube_app =
 	rename_image_format_to_depth_image_format<
 	add_image_format<vk::Format::eD32Sfloat,
 	add_image_count_equal_swapchain_image_count<
-	add_recreate_surface_for_swapchain_images_views <
+	add_recreate_surface_for <
 	add_swapchain_images_views <
-	add_recreate_surface_for_swapchain_images <
+	add_recreate_surface_for <
 	add_swapchain_images <
-	add_recreate_surface_for_swapchain <
+	add_recreate_surface_for <
 	add_swapchain <
 	add_swapchain_image_extent_equal_surface_current_extent <
 	add_swapchain_image_format <
+	add_command_pool <
+	add_queue <
 	add_device <
 	add_swapchain_extension <
 	add_empty_extensions <
 	add_find_properties <
 	cache_physical_device_memory_properties<
-	add_recreate_surface_for_cache_surface_capabilites<
+	add_recreate_surface_for<
 	cache_surface_capabilities<
 	add_recreate_surface_for<
 	test_physical_device_support_surface<
@@ -317,7 +319,7 @@ using draw_cube_app =
 	>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> >
 	>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> >
 	>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-	>>>>>>>>>>>>>>>>>>>>>>>>>>>
+	>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 		;
 using clear_debug_app = 
 	add_window_loop <
