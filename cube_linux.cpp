@@ -1,6 +1,7 @@
 #define VK_USE_PLATFORM_WAYLAND_KHR
 #include "cube.hpp"
 #include "wayland_window.hpp"
+#include <chrono>
 
 template <class T> class add_vulkan_surface : public T {
 public:
@@ -73,9 +74,44 @@ public:
     }
 };
 
+using namespace std::chrono;
+template<class T>
+class add_frame_time_analyser : public T{
+public:
+    using parent = T;
+    add_frame_time_analyser() {
+    }
+    void draw() {
+        const int update_frames_count = 10000;
+        if (m_frame_index % update_frames_count == 0) {
+            auto now = steady_clock::now();
+            m_frame_time = (now - m_last_time_point) / update_frames_count;
+            double fps = 1000000000.0/m_frame_time.count();
+            std::clog
+                << "frame time: "
+                << std::setw(10)
+                << m_frame_time.count()/1000000.0
+                << "ms"
+                << "fps: "
+                << fps
+                << "\t\r";
+            m_last_time_point = now;
+        }
+
+        parent::draw();
+
+        m_frame_index++;
+    }
+private:
+    nanoseconds m_frame_time;
+    uint64_t m_frame_index;
+    time_point<steady_clock, nanoseconds> m_last_time_point;
+};
+
 using app =
     run_event_loop<
     add_event_loop<
+    add_frame_time_analyser<
     add_dynamic_draw <
     add_acquire_next_image_semaphores <
     add_acquire_next_image_semaphore_fences <
@@ -233,7 +269,7 @@ using app =
     >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
     >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
     >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-    >>>>>>>>>>>>>>>>>>>>
+    >>>>>>>>>>>>>>>>>>>>>
 ;
 
 int main() {
