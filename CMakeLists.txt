@@ -49,6 +49,18 @@ target_link_libraries(cube PUBLIC vulkan_helper wayland-client)
 target_include_directories(cube PUBLIC wayland)
 set_target_properties(cube PROPERTIES CXX_STANDARD 23)
 
+add_executable(cube_display
+    cube_display.cpp
+    cube.hpp
+    shaders/cube.vert
+    shaders/cube_vert.spv
+    shaders/cube.frag
+    shaders/cube_frag.spv
+)
+target_link_libraries(cube_display PUBLIC vulkan_helper)
+target_include_directories(cube_display PUBLIC wayland)
+set_target_properties(cube_display PROPERTIES CXX_STANDARD 23)
+
 endif()
 
 file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/shaders)
