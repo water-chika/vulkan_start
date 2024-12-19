@@ -160,6 +160,8 @@ using draw_cube_app =
 	add_window_loop <
 	jump_draw_if_window_minimized <
 	add_dynamic_draw <
+    add_process_suboptimal_image<
+        typeof([](auto* p) static {p->recreate_surface();std::cout << "recreate surface" << std::endl;}),
 	add_acquire_next_image_semaphores <
 	add_acquire_next_image_semaphore_fences <
 	add_draw_semaphores <
@@ -319,7 +321,7 @@ using draw_cube_app =
 	>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> >
 	>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> >
 	>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-	>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+	>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 		;
 using clear_debug_app = 
 	add_window_loop <

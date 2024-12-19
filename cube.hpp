@@ -636,90 +636,12 @@ private:
   vk::RenderPass m_render_pass;
 };
 
-template <class T> class add_dynamic_draw_without_recreate_surface : public T {
+template <class F, class T> class add_process_suboptimal_image : public T {
 public:
-  using parent = T;
-  void draw() {
-    vk::Device device = parent::get_device();
-    vk::SwapchainKHR swapchain = parent::get_swapchain();
-    vk::Queue queue = parent::get_queue();
-    vk::Semaphore acquire_image_semaphore =
-        parent::get_acquire_next_image_semaphore();
-    bool need_recreate_surface = false;
-
-    auto [res, index] =
-        device.acquireNextImage2KHR(vk::AcquireNextImageInfoKHR{}
-                                        .setSwapchain(swapchain)
-                                        .setSemaphore(acquire_image_semaphore)
-                                        .setTimeout(UINT64_MAX)
-                                        .setDeviceMask(1));
-    if (res == vk::Result::eSuboptimalKHR) {
-      need_recreate_surface = true;
-    } else if (res != vk::Result::eSuccess) {
-      throw std::runtime_error{"acquire next image != success"};
+    using parent = T;
+    void process_suboptimal_image() {
+        F::operator()(this);
     }
-    parent::free_acquire_next_image_semaphore(index);
-
-    vk::Fence acquire_next_image_semaphore_fence =
-        parent::get_acquire_next_image_semaphore_fence(index);
-    {
-      vk::Result res = device.waitForFences(acquire_next_image_semaphore_fence,
-                                            true, UINT64_MAX);
-      if (res != vk::Result::eSuccess) {
-        throw std::runtime_error{"failed to wait fences"};
-      }
-    }
-    device.resetFences(acquire_next_image_semaphore_fence);
-
-    std::vector<void *> upload_memory_ptrs =
-        parent::get_uniform_upload_buffer_memory_ptr_vector();
-    void *upload_ptr = upload_memory_ptrs[index];
-    memcpy(upload_ptr, &m_frame_index, sizeof(m_frame_index));
-    m_frame_index++;
-    std::vector<vk::DeviceMemory> upload_memory_vector =
-        parent::get_uniform_upload_buffer_memory_vector();
-    vk::DeviceMemory upload_memory = upload_memory_vector[index];
-    device.flushMappedMemoryRanges(vk::MappedMemoryRange{}
-                                       .setMemory(upload_memory)
-                                       .setOffset(0)
-                                       .setSize(vk::WholeSize));
-
-    vk::Semaphore draw_image_semaphore =
-        parent::get_draw_image_semaphore(index);
-    vk::CommandBuffer buffer = parent::get_swapchain_command_buffer(index);
-    vk::PipelineStageFlags wait_stage_mask{
-        vk::PipelineStageFlagBits::eTopOfPipe};
-    queue.submit(vk::SubmitInfo{}
-                     .setCommandBuffers(buffer)
-                     .setWaitSemaphores(acquire_image_semaphore)
-                     .setWaitDstStageMask(wait_stage_mask)
-                     .setSignalSemaphores(draw_image_semaphore),
-                 acquire_next_image_semaphore_fence);
-    try {
-      auto res = queue.presentKHR(vk::PresentInfoKHR{}
-                                      .setImageIndices(index)
-                                      .setSwapchains(swapchain)
-                                      .setWaitSemaphores(draw_image_semaphore));
-      if (res == vk::Result::eSuboptimalKHR) {
-        need_recreate_surface = true;
-      } else if (res != vk::Result::eSuccess) {
-        throw std::runtime_error{"present return != success"};
-      }
-    } catch (vk::OutOfDateKHRError e) {
-      need_recreate_surface = true;
-    }
-    if (need_recreate_surface) {
-        throw std::runtime_error{"This should not need recreate surface"};
-    }
-  }
-  ~add_dynamic_draw_without_recreate_surface() {
-    vk::Device device = parent::get_device();
-    vk::Queue queue = parent::get_queue();
-    queue.waitIdle();
-  }
-
-private:
-  uint64_t m_frame_index = 0;
 };
 
 template <class T> class add_dynamic_draw : public T {
@@ -796,7 +718,7 @@ public:
     }
     if (need_recreate_surface) {
       queue.waitIdle();
-      parent::recreate_surface();
+      parent::process_suboptimal_image();
     }
   }
   ~add_dynamic_draw() {

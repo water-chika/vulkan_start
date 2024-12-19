@@ -113,6 +113,8 @@ using app =
     add_event_loop<
     add_frame_time_analyser<
     add_dynamic_draw <
+    add_process_suboptimal_image<
+        typeof([](auto* p) static {p->recreate_surface();std::cout << "recreate surface" << std::endl;}),
     add_acquire_next_image_semaphores <
     add_acquire_next_image_semaphore_fences <
     add_draw_semaphores <
@@ -269,7 +271,7 @@ using app =
     >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
     >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
     >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-    >>>>>>>>>>>>>>>>>>>>>
+    >>>>>>>>>>>>>>>>>>>>>>
 ;
 
 int main() {

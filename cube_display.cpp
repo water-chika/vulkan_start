@@ -87,7 +87,13 @@ public:
 
 using app =
     add_run_loop<
-    add_dynamic_draw_without_recreate_surface <
+    add_dynamic_draw<
+    add_process_suboptimal_image<
+        typeof(
+            [](auto* this_ptr) static {
+                throw std::runtime_error{"display surface should not be suboptimal"};
+            }
+        ),
     add_acquire_next_image_semaphores <
     add_acquire_next_image_semaphore_fences <
     add_draw_semaphores <
@@ -226,7 +232,7 @@ using app =
     none_t
     >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
     >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-    >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+    >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 ;
 
 int main() {
