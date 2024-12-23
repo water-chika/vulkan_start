@@ -49,6 +49,19 @@ target_link_libraries(cube PUBLIC vulkan_helper wayland-client)
 target_include_directories(cube PUBLIC wayland)
 set_target_properties(cube PROPERTIES CXX_STANDARD 23)
 
+add_executable(mesh_test
+    mesh.cpp
+    wayland/xdg-shell-protocol.c
+    cube.hpp
+    shaders/mesh.glsl
+    shaders/mesh.spv
+    shaders/cube.frag
+    shaders/cube_frag.spv
+)
+target_link_libraries(mesh_test PUBLIC vulkan_helper wayland-client)
+target_include_directories(mesh_test PUBLIC wayland)
+set_target_properties(mesh_test PROPERTIES CXX_STANDARD 23)
+
 add_executable(cube_display
     cube_display.cpp
     cube.hpp
@@ -79,14 +92,22 @@ add_custom_command(OUTPUT shaders/cube_vert.spv
   MAIN_DEPENDENCY ${CMAKE_CURRENT_SOURCE_DIR}/shaders/cube.vert
   DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/shaders/cube.vert Vulkan::glslangValidator)
 
-  add_custom_command(OUTPUT shaders/frag.spv
+add_custom_command(OUTPUT shaders/mesh.spv
+  COMMAND Vulkan::glslangValidator --target-env vulkan1.3
+              ${CMAKE_CURRENT_SOURCE_DIR}/shaders/mesh.glsl
+	      -S mesh
+	      -o ${CMAKE_CURRENT_BINARY_DIR}/shaders/mesh.spv
+  MAIN_DEPENDENCY ${CMAKE_CURRENT_SOURCE_DIR}/shaders/mesh.glsl
+  DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/shaders/mesh.glsl Vulkan::glslangValidator)
+
+add_custom_command(OUTPUT shaders/frag.spv
   COMMAND Vulkan::glslangValidator --target-env vulkan1.3
               ${CMAKE_CURRENT_SOURCE_DIR}/shaders/test.frag
 	      -o ${CMAKE_CURRENT_BINARY_DIR}/shaders/frag.spv
   MAIN_DEPENDENCY ${CMAKE_CURRENT_SOURCE_DIR}/shaders/test.frag
   DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/shaders/test.frag Vulkan::glslangValidator)
 
-  add_custom_command(OUTPUT shaders/cube_frag.spv
+add_custom_command(OUTPUT shaders/cube_frag.spv
   COMMAND Vulkan::glslangValidator --target-env vulkan1.3
               ${CMAKE_CURRENT_SOURCE_DIR}/shaders/cube.frag
 	      -o ${CMAKE_CURRENT_BINARY_DIR}/shaders/cube_frag.spv

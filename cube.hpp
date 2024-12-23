@@ -291,6 +291,7 @@ public:
   }
   void destroy() {}
 };
+
 template <class T> class record_swapchain_command_buffers : public T {
 public:
   using parent = T;
