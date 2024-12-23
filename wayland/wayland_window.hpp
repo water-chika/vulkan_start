@@ -369,7 +369,7 @@ public:
     state.width = 640, state.height = 480;
     state.display = wl_display_connect(NULL);
     if (!state.display) {
-      fprintf(stderr, "Failed to connect to Wayland display.\n");
+        throw std::runtime_error{"Failed to connect to Wayland display"};
     }
     fprintf(stderr, "Connection established!\n");
 
