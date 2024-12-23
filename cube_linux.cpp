@@ -108,6 +108,8 @@ private:
     time_point<steady_clock, nanoseconds> m_last_time_point;
 };
 
+using namespace std::literals;
+
 using app =
     run_event_loop<
     add_event_loop<
@@ -192,7 +194,7 @@ using app =
     cache_file_size <
     add_file_mapping <
     add_file <
-    add_cube_vertex_shader_path <
+    add_file_path <typeof([]() static { return std::filesystem::path{"shaders/cube_vert.spv"}; }),
     add_pipeline_stage_to_stages <
     add_pipeline_stage <
     set_shader_stage < vk::ShaderStageFlagBits::eFragment,
@@ -204,7 +206,7 @@ using app =
     cache_file_size <
     add_file_mapping <
     add_file <
-    add_cube_fragment_shader_path <
+    add_file_path <typeof([]() static { return "shaders/cube_frag.spv"s; }),
     add_empty_pipeline_stages <
     add_pipeline_layout <
     add_single_descriptor_set_layout<

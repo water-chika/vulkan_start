@@ -85,6 +85,8 @@ public:
     }
 };
 
+using namespace std::literals;
+
 using app =
     add_run_loop<
     add_dynamic_draw<
@@ -166,7 +168,7 @@ using app =
     cache_file_size <
     add_file_mapping <
     add_file <
-    add_cube_vertex_shader_path <
+    add_file_path <typeof([]() static { return "shaders/cube_vert.spv"s; }),
     add_pipeline_stage_to_stages <
     add_pipeline_stage <
     set_shader_stage < vk::ShaderStageFlagBits::eFragment,
@@ -178,7 +180,7 @@ using app =
     cache_file_size <
     add_file_mapping <
     add_file <
-    add_cube_fragment_shader_path <
+    add_file_path <typeof([]() static { return "shaders/cube_frag.spv"s; }),
     add_empty_pipeline_stages <
     add_pipeline_layout <
     add_single_descriptor_set_layout<

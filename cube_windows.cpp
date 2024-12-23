@@ -155,6 +155,7 @@ private:
 using namespace vulkan_windows_helper;
 using namespace windows_helper;
 using namespace vulkan_hpp_helper;
+using namespace std::literals;
 
 using draw_cube_app =
 	add_window_loop <
@@ -238,7 +239,7 @@ using draw_cube_app =
 	cache_file_size <
 	add_file_mapping <
 	add_file <
-	add_cube_vertex_shader_path <
+    add_file_path <typeof([]() static { return std::filesystem::path{"shaders/cube_vert.spv"}; }),
 	add_pipeline_stage_to_stages <
 	add_pipeline_stage <
 	set_shader_stage < vk::ShaderStageFlagBits::eFragment,
@@ -250,7 +251,7 @@ using draw_cube_app =
 	cache_file_size <
 	add_file_mapping <
 	add_file <
-	add_cube_fragment_shader_path <
+    add_file_path <typeof([]() static { return "shaders/cube_frag.spv"s; }),
 	add_empty_pipeline_stages <
 	add_pipeline_layout <
 	add_single_descriptor_set_layout<

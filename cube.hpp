@@ -416,14 +416,11 @@ private:
       3, 7, 6, 3, 6, 2, 2, 6, 4, 2, 4, 0, 0, 4, 5, 0, 5, 1,
   };
 };
-template <class T> class add_cube_vertex_shader_path : public T {
+template <std::invocable<> CALL, class T> class add_file_path : public T {
 public:
-  auto get_file_path() { return std::filesystem::path{"shaders/cube_vert.spv"}; }
+    auto get_file_path() { return CALL::operator()(); }
 };
-template <class T> class add_cube_fragment_shader_path : public T {
-public:
-  auto get_file_path() { return std::filesystem::path{"shaders/cube_frag.spv"}; }
-};
+
 template <class T> class add_cube_descriptor_set_layout_binding : public T {
 public:
   using parent = T;
