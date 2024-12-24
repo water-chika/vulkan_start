@@ -90,6 +90,7 @@ using namespace std::literals;
 using app =
     add_run_loop<
     add_dynamic_draw<
+    add_get_time<
     add_process_suboptimal_image<
         typeof(
             [](auto* this_ptr) static {
@@ -234,7 +235,7 @@ using app =
     none_t
     >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
     >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-    >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+    >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 ;
 
 int main() {

@@ -7,7 +7,8 @@ layout(binding=0) uniform Buffer{
     uint index;
 } Frame;
 void main() {
-    float theta = Frame.index*3.14*0.01*0.01;
+    float time_in_s = Frame.index * 0.001;
+    float theta = time_in_s*3.14/4;
     mat4 rotate_z = mat4(
         cos(theta), -sin(theta), 0, 0,
         sin(theta), cos(theta), 0, 0,

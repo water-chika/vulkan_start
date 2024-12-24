@@ -642,6 +642,17 @@ public:
     }
 };
 
+template <class T> class add_get_time : public T {
+public:
+    add_get_time() : m_start_time{std::chrono::steady_clock::now()}{
+    }
+    auto get_time() {
+        return std::chrono::steady_clock::now() - m_start_time;
+    }
+private:
+    std::chrono::steady_clock::time_point m_start_time;
+};
+
 template <class T> class add_dynamic_draw : public T {
 public:
   using parent = T;
@@ -677,11 +688,13 @@ public:
     }
     device.resetFences(acquire_next_image_semaphore_fence);
 
+    auto time = parent::get_time();
+    auto time_in_ms = std::chrono::duration_cast<std::chrono::milliseconds>(time);
+    uint64_t frame_index = time_in_ms.count();
     std::vector<void *> upload_memory_ptrs =
         parent::get_uniform_upload_buffer_memory_ptr_vector();
     void *upload_ptr = upload_memory_ptrs[index];
-    memcpy(upload_ptr, &m_frame_index, sizeof(m_frame_index));
-    m_frame_index++;
+    memcpy(upload_ptr, &frame_index, sizeof(frame_index));
     std::vector<vk::DeviceMemory> upload_memory_vector =
         parent::get_uniform_upload_buffer_memory_vector();
     vk::DeviceMemory upload_memory = upload_memory_vector[index];
@@ -724,9 +737,6 @@ public:
     vk::Queue queue = parent::get_queue();
     queue.waitIdle();
   }
-
-private:
-  uint64_t m_frame_index = 0;
 };
 
 
