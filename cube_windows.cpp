@@ -52,7 +52,7 @@ public:
     m_window_class = RegisterClass(&window_class);
   }
   ~add_window_class() {
-    UnregisterClass((LPCSTR)m_window_class, GetModuleHandle(NULL));
+    UnregisterClass(reinterpret_cast<LPCSTR>(m_window_class), GetModuleHandle(NULL));
   }
   auto get_window_class() { return m_window_class; }
 
@@ -96,7 +96,7 @@ public:
     int height = parent::get_window_height();
     int window_style = parent::get_window_style();
     m_window =
-        CreateWindowA((LPCSTR)parent::get_window_class(), "draw_pixels",
+        CreateWindowA(reinterpret_cast<LPCSTR>(parent::get_window_class()), "draw_pixels",
                       window_style, CW_USEDEFAULT, CW_USEDEFAULT, width, height,
                       NULL, NULL, GetModuleHandle(NULL), parent::get_lparam());
     if (m_window == NULL) {
