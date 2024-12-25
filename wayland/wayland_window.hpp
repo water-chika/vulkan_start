@@ -409,7 +409,7 @@ private:
 #endif
 };
 
-template <class T> class add_event_loop : public T {
+template <class T> class add_wayland_event_loop : public T {
 public:
   using parent = T;
   void event_loop() {
@@ -421,8 +421,8 @@ public:
 #endif
   }
 };
-template <class T> class run_event_loop : public T {
+template <class T> class run_wayland_event_loop : public T {
 public:
   using parent = T;
-  run_event_loop() { parent::event_loop(); }
+  run_wayland_event_loop() { parent::event_loop(); }
 };

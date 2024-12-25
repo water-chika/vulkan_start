@@ -1,6 +1,6 @@
 #pragma once
 
-namespace windows_helper {
+namespace vulkan_start {
 
 template <class T> class add_window_process : public T {
 public:
@@ -117,35 +117,17 @@ private:
 #endif
 };
 
-template <class T> class add_window_loop : public T {
+
+
+template<>
+class use_platform<platform::win32> {
+public:
+
+template <class T> class add_vulkan_surface : public T {
 public:
   using parent = T;
-  add_window_loop() {
-#ifdef WIN32
-    MSG msg = {};
-    while (msg.message != WM_QUIT) {
-      if (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE)) {
-        TranslateMessage(&msg);
-        DispatchMessage(&msg);
-      } else {
-        parent::draw();
-      }
-    }
-#else
-    throw std::runtime_error{"Windows event loop is not supported"};
-#endif
-  }
-};
-
-} // namespace windows_helper
-
-namespace vulkan_windows_helper {
-
-template <class T> class add_windows_surface : public T {
-public:
-  using parent = T;
-  add_windows_surface() { create_surface(); }
-  ~add_windows_surface() { destroy_surface(); }
+  add_vulkan_surface() { create_surface(); }
+  ~add_vulkan_surface() { destroy_surface(); }
   void create_surface() {
 #ifdef WIN32
     vk::Instance instance = parent::get_instance();
@@ -165,5 +147,25 @@ public:
 
 private:
   vk::SurfaceKHR m_surface;
-};
-} // namespace vulkan_windows_helper
+}; //class add_vulkan_surface
+template <class T> class add_event_loop : public T {
+public:
+  using parent = T;
+  add_event_loop() {
+#ifdef WIN32
+    MSG msg = {};
+    while (msg.message != WM_QUIT) {
+      if (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE)) {
+        TranslateMessage(&msg);
+        DispatchMessage(&msg);
+      } else {
+        parent::draw();
+      }
+    }
+#else
+    throw std::runtime_error{"Windows event loop is not supported"};
+#endif
+  }
+}; // class add_event_loop
+}; // class use_platform<platform::win32>
+} // namespace vulkan_start

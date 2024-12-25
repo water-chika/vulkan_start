@@ -935,6 +935,29 @@ public:
 
 template<platform PLATFORM>
 class use_platform {
+public:
+
+template<class T>
+class add_vulkan_surface : public T
+{
+public:
+    add_vulkan_surface() = delete;
+};
+
+template<class T>
+class add_platform_needed_extensions : public T
+{
+public:
+    add_platform_needed_extensions() = delete;
+};
+
+template<class T>
+class add_event_loop : public T
+{
+public:
+    add_event_loop() = delete;
+};
+
 };
 
 template<platform PLATFORM>
@@ -947,9 +970,21 @@ class add_swapchain_image_extent
 };
 
 template<platform PLATFORM>
+class use_platform_add_physical_device_and_surface {
+public:
+template<class T>
+class add_physical_device_and_surface
+    : public
+    add_physical_device<
+    typename use_platform<PLATFORM>::template add_vulkan_surface<
+    T
+    >>
+{};
+};
+
+template<platform PLATFORM>
 class use_platform_add_cube_physical_device_and_device_and_draw {
 public:
-
 template<class T>
 class add_cube_physical_device_and_device_and_draw
     : public
@@ -974,7 +1009,7 @@ class add_cube_physical_device_and_device_and_draw
 	add_recreate_surface_for<
 	test_physical_device_support_surface<
 	add_queue_family_index <
-  add_physical_device<
+  typename use_platform_add_physical_device_and_surface<PLATFORM>::template add_physical_device_and_surface<
   T
   >>>>>>>>>>>>>>>>>>>>
 {};
@@ -1011,7 +1046,7 @@ class add_mesh_physical_device_and_device_and_draw
 	add_recreate_surface_for<
 	test_physical_device_support_surface<
 	add_queue_family_index <
-  add_physical_device<
+  typename use_platform_add_physical_device_and_surface<PLATFORM>::template add_physical_device_and_surface<
   T
   >>>>>>>>>>>>>>>>>>>>>>
 {};
@@ -1030,16 +1065,14 @@ namespace vulkan_start {
 #define WS_OVERLAPPEDWINDOW 0
 #endif
 
-using namespace windows_helper;
 using namespace vulkan_hpp_helper;
 using namespace std::literals;
 template <template<typename> typename C> class run_on_windows_platform
   : public
-  add_window_loop <
+  use_platform<platform::win32>::add_event_loop<
 	jump_draw_if_window_minimized <
   C<
   add_recreate_surface<
-	vulkan_windows_helper::add_windows_surface<
 	add_instance<
 	add_win32_surface_extension<
 	add_surface_extension<
@@ -1051,30 +1084,20 @@ template <template<typename> typename C> class run_on_windows_platform
 	add_window_class<
 	add_window_process<
   empty_class
-  >>>>>>>>>>>>>>>
+  >>>>>>>>>>>>>>
 {};
-
-template <class T> class add_surface_needed_extension : public T {
-public:
-  auto get_extensions() {
-    auto ext = T::get_extensions();
-    ext.push_back(vk::KHRDisplayExtensionName);
-    return ext;
-  }
-};
 
 
 template <template<typename> typename C> class run_on_display_platform
   : public
-    add_run_loop<
+    use_platform<platform::display>::add_event_loop<
   C<
-    add_dummy_recreate_surface<
     add_instance<
-    add_surface_needed_extension<
+    use_platform<platform::display>::add_platform_needed_extensions<
     add_surface_extension<
     add_empty_extensions<
   empty_class
-  >>>>>>>
+  >>>>>>
 {};
 
 namespace wayland_platform {
@@ -1100,12 +1123,9 @@ public:
 
 template <template<typename> typename C> class run_on_wayland_platform
   : public
-    run_event_loop<
-    add_event_loop<
+    use_platform<platform::wayland>::add_event_loop<
     register_size_change_callback<
     C<
-    add_recreate_surface_for<
-    vulkan_start::use_platform<vulkan_start::platform::wayland>::add_vulkan_surface<
     add_dummy_recreate_surface<
     add_instance<
     add_wayland_surface_extension<
@@ -1113,7 +1133,7 @@ template <template<typename> typename C> class run_on_wayland_platform
     add_empty_extensions<
     add_wayland_surface<
     empty_class
-    >>>>>>>>>>>>
+    >>>>>>>>>
 {};
 }
 

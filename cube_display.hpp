@@ -29,6 +29,7 @@ public:
     }
 };
 
+
 template<>
 class use_platform<platform::display> {
 public:
@@ -68,42 +69,45 @@ public:
 private:
   vk::SurfaceKHR m_surface;
   vk::Extent2D m_surface_extent;
-};
-};
+}; // class add_vulkan_surface
+
+
+template<class T>
+class add_platform_needed_extensions : public T {
+public:
+  auto get_extensions() {
+    auto ext = T::get_extensions();
+    ext.push_back(vk::KHRDisplayExtensionName);
+    return ext;
+  }
+}; // class add_platform_needed_extensions
+
+
+template<class T>
+class add_event_loop
+    : public
+    add_run_loop<
+    T
+    >
+{
+}; // class add_event_loop
+
+}; // class use_platform<platform::display>
 
 template<>
-class use_platform_add_cube_physical_device_and_device_and_draw<platform::display> {
+class use_platform_add_physical_device_and_surface<platform::display> {
 public:
-    static constexpr auto PLATFORM = platform::display;
 template<class T>
-class add_cube_physical_device_and_device_and_draw
+class add_physical_device_and_surface
     : public
-    add_cube_resources_and_draw<
-    add_spirv_file_to_pipeline_stages<
-        typeof([]() static {return std::string{"shaders/cube_vert.spv"};}), vk::ShaderStageFlagBits::eVertex,
-    add_spirv_file_to_pipeline_stages<
-        typeof([]() static {return std::string{"shaders/cube_frag.spv"};}), vk::ShaderStageFlagBits::eFragment,
-	set_shader_entry_name_with_main <
-	add_empty_pipeline_stages <
-	add_cube_swapchain_and_pipeline_layout<
-    typename use_platform_add_swapchain_image_extent<PLATFORM>::template add_swapchain_image_extent<
-	add_command_pool <
-	add_queue <
-	add_device <
-	add_swapchain_extension <
-	add_empty_extensions <
-	add_find_properties <
-	cache_physical_device_memory_properties<
-	add_recreate_surface_for<
-	cache_surface_capabilities<
-	add_recreate_surface_for<
-	test_physical_device_support_surface<
-	add_queue_family_index <
-    vulkan_start::use_platform<PLATFORM>::add_vulkan_surface<
-  add_physical_device<
-  T
-  >>>>>>>>>>>>>>>>>>>>>
+    add_dummy_recreate_surface<
+    use_platform<platform::display>::add_vulkan_surface<
+    add_physical_device<
+    T
+    >>>
 {};
-}; // class use_platform_*
+};
+
+
 } //namespace vulkan_start
 

@@ -43,6 +43,12 @@ public:
 private:
   vk::SurfaceKHR m_surface;
 }; // add_vulkan_surface
+
+template<class T>
+class add_event_loop : public run_wayland_event_loop<add_wayland_event_loop<T>>
+{
+}; // class add_event_loop
+
 }; // use_platform<platform::wayland>
 
 
