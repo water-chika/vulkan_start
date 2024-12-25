@@ -1070,11 +1070,10 @@ using namespace std::literals;
 template <template<typename> typename C> class run_on_windows_platform
   : public
   use_platform<platform::win32>::add_event_loop<
-	jump_draw_if_window_minimized <
   C<
   add_recreate_surface<
 	add_instance<
-	add_win32_surface_extension<
+	use_platform<platform::win32>::add_platform_needed_extensions<
 	add_surface_extension<
 	add_empty_extensions<
 	add_window<
@@ -1084,7 +1083,7 @@ template <template<typename> typename C> class run_on_windows_platform
 	add_window_class<
 	add_window_process<
   empty_class
-  >>>>>>>>>>>>>>
+  >>>>>>>>>>>>>
 {};
 
 
@@ -1128,7 +1127,7 @@ template <template<typename> typename C> class run_on_wayland_platform
     C<
     add_dummy_recreate_surface<
     add_instance<
-    add_wayland_surface_extension<
+    use_platform<platform::wayland>::add_platform_needed_extensions<
     add_surface_extension<
     add_empty_extensions<
     add_wayland_surface<

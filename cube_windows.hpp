@@ -148,7 +148,12 @@ public:
 private:
   vk::SurfaceKHR m_surface;
 }; //class add_vulkan_surface
-template <class T> class add_event_loop : public T {
+
+template<class T>
+class add_platform_needed_extensions : public add_win32_surface_extension<T>
+{
+};
+template <class T> class add_event_loop : public jump_draw_if_window_minimized<T> {
 public:
   using parent = T;
   add_event_loop() {

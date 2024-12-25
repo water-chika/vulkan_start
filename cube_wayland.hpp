@@ -45,6 +45,11 @@ private:
 }; // add_vulkan_surface
 
 template<class T>
+class add_platform_needed_extensions : public add_wayland_surface_extension<T>
+{
+}; // add_platform_needed_extensions
+
+template<class T>
 class add_event_loop : public run_wayland_event_loop<add_wayland_event_loop<T>>
 {
 }; // class add_event_loop
