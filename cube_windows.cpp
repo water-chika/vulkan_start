@@ -3,7 +3,7 @@
 #include "cube.hpp"
 
 using draw_cube_app =
-	run_on_windows_platform<
+	vulkan_start::run_on_windows_platform<
       vulkan_start::use_platform_add_cube_physical_device_and_device_and_draw<vulkan_start::platform::win32>::
         add_cube_physical_device_and_device_and_draw
 	>
