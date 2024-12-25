@@ -160,76 +160,7 @@ using namespace std::literals;
 using draw_cube_app =
 	add_window_loop <
 	jump_draw_if_window_minimized <
-	add_dynamic_draw <
-    add_get_time<
-    add_process_suboptimal_image<
-        typeof([](auto* p) static {p->recreate_surface();std::cout << "recreate surface" << std::endl;}),
-	add_acquire_next_image_semaphores <
-	add_acquire_next_image_semaphore_fences <
-	add_draw_semaphores <
-	add_recreate_surface_for <
-	record_swapchain_command_buffers_cube <
-	add_get_format_clear_color_value_type <
-	add_recreate_surface_for <
-	add_swapchain_command_buffers <
-	write_descriptor_set<
-	add_nonfree_descriptor_set<
-	add_descriptor_pool<
-	add_buffer_memory_with_data_copy<
-	rename_buffer_to_index_buffer<
-	add_buffer_as_member<
-	set_buffer_usage<vk::BufferUsageFlagBits::eIndexBuffer,
-	add_cube_index_buffer_data<
-	rename_buffer_vector_to_uniform_upload_buffer_vector <
-	rename_buffer_memory_vector_to_uniform_upload_buffer_memory_vector<
-	rename_buffer_memory_ptr_vector_to_uniform_upload_buffer_memory_ptr_vector<
-	map_buffer_memory_vector<
-	add_buffer_memory_vector<
-	set_buffer_memory_properties < vk::MemoryPropertyFlagBits::eHostVisible,
-	add_buffer_vector<
-	set_vector_size_to_swapchain_image_count<
-	set_buffer_usage<vk::BufferUsageFlagBits::eTransferSrc,
-	rename_buffer_vector_to_uniform_buffer_vector<
-	add_buffer_memory_vector<
-	set_buffer_memory_properties<vk::MemoryPropertyFlagBits::eDeviceLocal,
-	add_buffer_vector<
-	set_vector_size_to_swapchain_image_count <
-	add_buffer_usage<vk::BufferUsageFlagBits::eTransferDst,
-	add_buffer_usage<vk::BufferUsageFlagBits::eUniformBuffer,
-	empty_buffer_usage<
-	set_buffer_size<sizeof(uint64_t),
-	add_buffer_memory_with_data_copy <
-	rename_buffer_to_vertex_buffer<
-	add_buffer_as_member <
-	set_buffer_usage<vk::BufferUsageFlagBits::eVertexBuffer,
-	add_cube_vertex_buffer_data <
-	add_recreate_surface_for<
-	add_graphics_pipeline <
-	add_pipeline_vertex_input_state <
-	add_vertex_binding_description <
-	add_empty_binding_descriptions <
-	add_vertex_attribute_description <
-	set_vertex_input_attribute_format<vk::Format::eR32G32B32Sfloat,
-	add_empty_vertex_attribute_descriptions <
-	set_binding < 0,
-	set_stride < sizeof(float) * 3,
-	set_input_rate < vk::VertexInputRate::eVertex,
-	set_subpass < 0,
-	add_recreate_surface_for <
-	add_framebuffers_cube <
-	add_render_pass_cube <
-	add_subpasses <
-	add_subpass_dependency <
-	add_empty_subpass_dependencies <
-	add_depth_attachment<
-	add_attachment <
-	add_empty_attachments <
-	add_pipeline_viewport_state <
-	add_scissor_equal_surface_rect <
-	add_empty_scissors <
-	add_viewport_equal_swapchain_image_rect <
-	add_empty_viewports <
-	set_tessellation_patch_control_point_count < 1,
+    add_cube_resources_and_draw<
     add_spirv_file_to_pipeline_stages<
         typeof([]() static {return "shaders/cube_vert.spv"s;}), vk::ShaderStageFlagBits::eVertex,
     add_spirv_file_to_pipeline_stages<
@@ -264,9 +195,7 @@ using draw_cube_app =
 	add_window_class<
 	add_window_process<
 	empty_class
-	>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> >
-	>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> >
-	>>>>>>>>>>>>>>>>
+	>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 	;
 
 int main() {
