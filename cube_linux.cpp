@@ -106,7 +106,7 @@ using app =
     add_surface_extension<
     add_empty_extensions<
     add_wayland_surface<
-    none_t
+    empty_class
     >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 ;
 

@@ -63,8 +63,6 @@ public:
   }
 };
 
-struct none_t{};
-
 template<class T>
 class add_run_loop : public T {
 public:
@@ -115,7 +113,7 @@ using app =
     add_surface_needed_extension<
     add_surface_extension<
     add_empty_extensions<
-    none_t
+    empty_class
     >>>>>>>>>>>>>>>>>>>>>>>>>
 ;
 

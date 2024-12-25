@@ -4,10 +4,250 @@
 #include <string>
 #include <vulkan_helper.hpp>
 
+#include "wayland/wayland_window.hpp"
+
 template <class T> class rename_images : public T {
 public:
   using parent = T;
   auto get_intermediate_images() { return parent::get_images(); }
+};
+
+namespace vulkan_start {
+enum class app {
+    fast_debug,
+    cube,
+    mesh_test,
+};
+
+template <app APP>
+class use_app {
+public:
+
+template <class T>
+class record_swapchain_command_buffers : public T {
+public:
+    record_swapchain_command_buffers() = delete;
+};
+
+};
+
+template<>
+class use_app<app::cube> {
+public:
+
+template <class T> class record_swapchain_command_buffers : public T {
+public:
+  using parent = T;
+  record_swapchain_command_buffers() { create(); }
+  void create() {
+    auto buffers = parent::get_swapchain_command_buffers();
+    auto swapchain_images = parent::get_swapchain_images();
+    auto queue_family_index = parent::get_queue_family_index();
+    auto framebuffers = parent::get_framebuffers();
+    std::vector<vk::Buffer> uniform_buffers =
+        parent::get_uniform_buffer_vector();
+    std::vector<vk::Buffer> uniform_upload_buffers =
+        parent::get_uniform_upload_buffer_vector();
+    std::vector<vk::DescriptorSet> descriptor_sets =
+        parent::get_descriptor_set();
+
+    auto clear_color_value_type = parent::get_format_clear_color_value_type(
+        parent::get_swapchain_image_format());
+    using value_type = decltype(clear_color_value_type);
+    std::map<value_type, vk::ClearColorValue> clear_color_values{
+        {value_type::eFloat32,
+         vk::ClearColorValue{}.setFloat32({0.4f, 0.4f, 0.4f, 0.0f})},
+        {value_type::eUint32, vk::ClearColorValue{}.setUint32({50, 50, 50, 0})},
+    };
+    if (!clear_color_values.contains(clear_color_value_type)) {
+      throw std::runtime_error{"unsupported clear color value type"};
+    }
+    vk::ClearColorValue clear_color_value{
+        clear_color_values[clear_color_value_type]};
+    auto clear_depth_value = vk::ClearDepthStencilValue{}.setDepth(1.0f);
+    auto clear_values =
+        std::array{vk::ClearValue{}.setColor(clear_color_value),
+                   vk::ClearValue{}.setDepthStencil(clear_depth_value)};
+
+    if (buffers.size() != swapchain_images.size()) {
+      throw std::runtime_error{
+          "swapchain images count != command buffers count"};
+    }
+    uint32_t index = 0;
+    for (uint32_t index = 0; index < buffers.size(); index++) {
+      vk::Image swapchain_image = swapchain_images[index];
+      vk::CommandBuffer cmd = buffers[index];
+
+      cmd.begin(vk::CommandBufferBeginInfo{});
+
+      vk::Buffer uniform_buffer = uniform_buffers[index];
+      vk::Buffer upload_buffer = uniform_upload_buffers[index];
+      cmd.copyBuffer(upload_buffer, uniform_buffer,
+                     vk::BufferCopy{}.setSize(sizeof(uint64_t)));
+      auto uniform_buffer_memory_barrier =
+          vk::BufferMemoryBarrier{}
+              .setSrcAccessMask(vk::AccessFlagBits::eTransferWrite)
+              .setDstAccessMask(vk::AccessFlagBits::eUniformRead)
+              .setSrcQueueFamilyIndex(queue_family_index)
+              .setDstQueueFamilyIndex(queue_family_index)
+              .setBuffer(uniform_buffer)
+              .setOffset(0)
+              .setSize(vk::WholeSize);
+      cmd.pipelineBarrier(vk::PipelineStageFlagBits::eTransfer,
+                          vk::PipelineStageFlagBits::eVertexShader, {}, {},
+                          uniform_buffer_memory_barrier, {});
+
+      vk::RenderPass render_pass = parent::get_render_pass();
+
+      vk::Extent2D swapchain_image_extent =
+          parent::get_swapchain_image_extent();
+      auto render_area = vk::Rect2D{}
+                             .setOffset(vk::Offset2D{0, 0})
+                             .setExtent(swapchain_image_extent);
+      vk::Framebuffer framebuffer = framebuffers[index];
+      cmd.beginRenderPass(vk::RenderPassBeginInfo{}
+                              .setRenderPass(render_pass)
+                              .setRenderArea(render_area)
+                              .setFramebuffer(framebuffer)
+                              .setClearValues(clear_values),
+                          vk::SubpassContents::eInline);
+
+      vk::Pipeline pipeline = parent::get_pipeline();
+      cmd.bindPipeline(vk::PipelineBindPoint::eGraphics, pipeline);
+      vk::Buffer vertex_buffer = parent::get_vertex_buffer();
+      cmd.bindVertexBuffers(0, vertex_buffer, vk::DeviceSize{0});
+      vk::Buffer index_buffer = parent::get_index_buffer();
+      cmd.bindIndexBuffer(index_buffer, 0, vk::IndexType::eUint16);
+
+      vk::PipelineLayout pipeline_layout = parent::get_pipeline_layout();
+      vk::DescriptorSet descriptor_set = descriptor_sets[index];
+      cmd.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pipeline_layout,
+                             0, descriptor_set, {});
+      cmd.drawIndexed(3 * 2 * 3 * 2, 1, 0, 0, 0);
+      cmd.endRenderPass();
+      cmd.end();
+    }
+  }
+  void destroy() {}
+}; // class record_swapchain_command_buffers in use_app<app::cube>
+}; // class use_app<app::cube>
+
+template<>
+class use_app<app::mesh_test> {
+public:
+
+
+template <class T> class record_swapchain_command_buffers : public T {
+public:
+  using parent = T;
+  record_swapchain_command_buffers() { create(); }
+  void create() {
+    auto buffers = parent::get_swapchain_command_buffers();
+    auto swapchain_images = parent::get_swapchain_images();
+    auto queue_family_index = parent::get_queue_family_index();
+    auto framebuffers = parent::get_framebuffers();
+    std::vector<vk::Buffer> uniform_buffers =
+        parent::get_uniform_buffer_vector();
+    std::vector<vk::Buffer> uniform_upload_buffers =
+        parent::get_uniform_upload_buffer_vector();
+    std::vector<vk::DescriptorSet> descriptor_sets =
+        parent::get_descriptor_set();
+
+    auto clear_color_value_type = parent::get_format_clear_color_value_type(
+        parent::get_swapchain_image_format());
+    using value_type = decltype(clear_color_value_type);
+    std::map<value_type, vk::ClearColorValue> clear_color_values{
+        {value_type::eFloat32,
+         vk::ClearColorValue{}.setFloat32({0.4f, 0.4f, 0.4f, 0.0f})},
+        {value_type::eUint32, vk::ClearColorValue{}.setUint32({50, 50, 50, 0})},
+    };
+    if (!clear_color_values.contains(clear_color_value_type)) {
+      throw std::runtime_error{"unsupported clear color value type"};
+    }
+    vk::ClearColorValue clear_color_value{
+        clear_color_values[clear_color_value_type]};
+    auto clear_depth_value = vk::ClearDepthStencilValue{}.setDepth(1.0f);
+    auto clear_values =
+        std::array{vk::ClearValue{}.setColor(clear_color_value),
+                   vk::ClearValue{}.setDepthStencil(clear_depth_value)};
+
+    if (buffers.size() != swapchain_images.size()) {
+      throw std::runtime_error{
+          "swapchain images count != command buffers count"};
+    }
+    uint32_t index = 0;
+    for (uint32_t index = 0; index < buffers.size(); index++) {
+      vk::Image swapchain_image = swapchain_images[index];
+      vk::CommandBuffer cmd = buffers[index];
+
+      cmd.begin(vk::CommandBufferBeginInfo{});
+
+      vk::Buffer uniform_buffer = uniform_buffers[index];
+      vk::Buffer upload_buffer = uniform_upload_buffers[index];
+      cmd.copyBuffer(upload_buffer, uniform_buffer,
+                     vk::BufferCopy{}.setSize(sizeof(uint64_t)));
+      auto uniform_buffer_memory_barrier =
+          vk::BufferMemoryBarrier{}
+              .setSrcAccessMask(vk::AccessFlagBits::eTransferWrite)
+              .setDstAccessMask(vk::AccessFlagBits::eUniformRead)
+              .setSrcQueueFamilyIndex(queue_family_index)
+              .setDstQueueFamilyIndex(queue_family_index)
+              .setBuffer(uniform_buffer)
+              .setOffset(0)
+              .setSize(vk::WholeSize);
+      cmd.pipelineBarrier(vk::PipelineStageFlagBits::eTransfer,
+                          vk::PipelineStageFlagBits::eVertexShader, {}, {},
+                          uniform_buffer_memory_barrier, {});
+
+      vk::RenderPass render_pass = parent::get_render_pass();
+
+      vk::Extent2D swapchain_image_extent =
+          parent::get_swapchain_image_extent();
+      auto render_area = vk::Rect2D{}
+                             .setOffset(vk::Offset2D{0, 0})
+                             .setExtent(swapchain_image_extent);
+      vk::Framebuffer framebuffer = framebuffers[index];
+      cmd.beginRenderPass(vk::RenderPassBeginInfo{}
+                              .setRenderPass(render_pass)
+                              .setRenderArea(render_area)
+                              .setFramebuffer(framebuffer)
+                              .setClearValues(clear_values),
+                          vk::SubpassContents::eInline);
+
+      vk::Pipeline pipeline = parent::get_pipeline();
+      cmd.bindPipeline(vk::PipelineBindPoint::eGraphics, pipeline);
+
+      vk::PipelineLayout pipeline_layout = parent::get_pipeline_layout();
+      vk::DescriptorSet descriptor_set = descriptor_sets[index];
+      cmd.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pipeline_layout,
+                             0, descriptor_set, {});
+      cmd.drawMeshTasksEXT(1,1,1, *this);
+      cmd.endRenderPass();
+      cmd.end();
+    }
+  }
+  void destroy() {}
+}; // class record_swapchain_command_buffers in use_app<app::mesh_test>
+}; // class use_app<app::mesh_test>
+
+}; // namespace vulkan_start
+
+template<class T>
+class add_vk_cmd_draw_mesh_tasks_ext : public T {
+public:
+    using parent = T;
+    add_vk_cmd_draw_mesh_tasks_ext() {
+        m_vk_cmd_draw_mesh_tasks_ext = reinterpret_cast<PFN_vkCmdDrawMeshTasksEXT>(vkGetInstanceProcAddr(parent::get_instance(), "vkCmdDrawMeshTasksEXT"));
+    }
+    static constexpr auto getVkHeaderVersion() {
+        return VK_HEADER_VERSION;
+    }
+    auto vkCmdDrawMeshTasksEXT(VkCommandBuffer cmd, uint32_t x, uint32_t y, uint32_t z) const{
+        return m_vk_cmd_draw_mesh_tasks_ext(cmd, x, y, z);
+    }
+
+private:
+    PFN_vkCmdDrawMeshTasksEXT m_vk_cmd_draw_mesh_tasks_ext;
 };
 
 template <class T>
@@ -196,101 +436,6 @@ public:
   void destroy() {}
 };
 
-template <class T> class record_swapchain_command_buffers_cube : public T {
-public:
-  using parent = T;
-  record_swapchain_command_buffers_cube() { create(); }
-  void create() {
-    auto buffers = parent::get_swapchain_command_buffers();
-    auto swapchain_images = parent::get_swapchain_images();
-    auto queue_family_index = parent::get_queue_family_index();
-    auto framebuffers = parent::get_framebuffers();
-    std::vector<vk::Buffer> uniform_buffers =
-        parent::get_uniform_buffer_vector();
-    std::vector<vk::Buffer> uniform_upload_buffers =
-        parent::get_uniform_upload_buffer_vector();
-    std::vector<vk::DescriptorSet> descriptor_sets =
-        parent::get_descriptor_set();
-
-    auto clear_color_value_type = parent::get_format_clear_color_value_type(
-        parent::get_swapchain_image_format());
-    using value_type = decltype(clear_color_value_type);
-    std::map<value_type, vk::ClearColorValue> clear_color_values{
-        {value_type::eFloat32,
-         vk::ClearColorValue{}.setFloat32({0.4f, 0.4f, 0.4f, 0.0f})},
-        {value_type::eUint32, vk::ClearColorValue{}.setUint32({50, 50, 50, 0})},
-    };
-    if (!clear_color_values.contains(clear_color_value_type)) {
-      throw std::runtime_error{"unsupported clear color value type"};
-    }
-    vk::ClearColorValue clear_color_value{
-        clear_color_values[clear_color_value_type]};
-    auto clear_depth_value = vk::ClearDepthStencilValue{}.setDepth(1.0f);
-    auto clear_values =
-        std::array{vk::ClearValue{}.setColor(clear_color_value),
-                   vk::ClearValue{}.setDepthStencil(clear_depth_value)};
-
-    if (buffers.size() != swapchain_images.size()) {
-      throw std::runtime_error{
-          "swapchain images count != command buffers count"};
-    }
-    uint32_t index = 0;
-    for (uint32_t index = 0; index < buffers.size(); index++) {
-      vk::Image swapchain_image = swapchain_images[index];
-      vk::CommandBuffer cmd = buffers[index];
-
-      cmd.begin(vk::CommandBufferBeginInfo{});
-
-      vk::Buffer uniform_buffer = uniform_buffers[index];
-      vk::Buffer upload_buffer = uniform_upload_buffers[index];
-      cmd.copyBuffer(upload_buffer, uniform_buffer,
-                     vk::BufferCopy{}.setSize(sizeof(uint64_t)));
-      auto uniform_buffer_memory_barrier =
-          vk::BufferMemoryBarrier{}
-              .setSrcAccessMask(vk::AccessFlagBits::eTransferWrite)
-              .setDstAccessMask(vk::AccessFlagBits::eUniformRead)
-              .setSrcQueueFamilyIndex(queue_family_index)
-              .setDstQueueFamilyIndex(queue_family_index)
-              .setBuffer(uniform_buffer)
-              .setOffset(0)
-              .setSize(vk::WholeSize);
-      cmd.pipelineBarrier(vk::PipelineStageFlagBits::eTransfer,
-                          vk::PipelineStageFlagBits::eVertexShader, {}, {},
-                          uniform_buffer_memory_barrier, {});
-
-      vk::RenderPass render_pass = parent::get_render_pass();
-
-      vk::Extent2D swapchain_image_extent =
-          parent::get_swapchain_image_extent();
-      auto render_area = vk::Rect2D{}
-                             .setOffset(vk::Offset2D{0, 0})
-                             .setExtent(swapchain_image_extent);
-      vk::Framebuffer framebuffer = framebuffers[index];
-      cmd.beginRenderPass(vk::RenderPassBeginInfo{}
-                              .setRenderPass(render_pass)
-                              .setRenderArea(render_area)
-                              .setFramebuffer(framebuffer)
-                              .setClearValues(clear_values),
-                          vk::SubpassContents::eInline);
-
-      vk::Pipeline pipeline = parent::get_pipeline();
-      cmd.bindPipeline(vk::PipelineBindPoint::eGraphics, pipeline);
-      vk::Buffer vertex_buffer = parent::get_vertex_buffer();
-      cmd.bindVertexBuffers(0, vertex_buffer, vk::DeviceSize{0});
-      vk::Buffer index_buffer = parent::get_index_buffer();
-      cmd.bindIndexBuffer(index_buffer, 0, vk::IndexType::eUint16);
-
-      vk::PipelineLayout pipeline_layout = parent::get_pipeline_layout();
-      vk::DescriptorSet descriptor_set = descriptor_sets[index];
-      cmd.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pipeline_layout,
-                             0, descriptor_set, {});
-      cmd.drawIndexed(3 * 2 * 3 * 2, 1, 0, 0, 0);
-      cmd.endRenderPass();
-      cmd.end();
-    }
-  }
-  void destroy() {}
-};
 
 template <class T> class record_swapchain_command_buffers : public T {
 public:
@@ -909,7 +1054,7 @@ template <class T> class add_cube_resources_and_draw
     add_acquire_next_image_semaphore_fences <
     add_draw_semaphores <
     add_recreate_surface_for<
-    record_swapchain_command_buffers_cube <
+    vulkan_start::use_app<vulkan_start::app::cube>::record_swapchain_command_buffers<
     add_get_format_clear_color_value_type <
     add_recreate_surface_for<
     add_swapchain_command_buffers <
@@ -973,6 +1118,76 @@ template <class T> class add_cube_resources_and_draw
     set_tessellation_patch_control_point_count < 1,
     T
     >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+{};
+
+
+template <class T> class add_mesh_resources_and_draw
+  : public
+    add_frame_time_analyser<
+    add_dynamic_draw <
+    add_get_time <
+    add_process_suboptimal_image<
+        typeof([](auto* p) static {p->recreate_surface();std::cout << "recreate surface" << std::endl;}),
+    add_acquire_next_image_semaphores <
+    add_acquire_next_image_semaphore_fences <
+    add_draw_semaphores <
+    add_recreate_surface_for<
+    vulkan_start::use_app<vulkan_start::app::mesh_test>::record_swapchain_command_buffers<
+    add_vk_cmd_draw_mesh_tasks_ext<
+    add_get_format_clear_color_value_type <
+    add_recreate_surface_for<
+    add_swapchain_command_buffers <
+    write_descriptor_set<
+    add_nonfree_descriptor_set<
+    add_descriptor_pool<
+    rename_buffer_vector_to_uniform_upload_buffer_vector <
+    rename_buffer_memory_vector_to_uniform_upload_buffer_memory_vector<
+    rename_buffer_memory_ptr_vector_to_uniform_upload_buffer_memory_ptr_vector<
+    map_buffer_memory_vector<
+    add_buffer_memory_vector<
+    set_buffer_memory_properties < vk::MemoryPropertyFlagBits::eHostVisible,
+    add_buffer_vector<
+    set_vector_size_to_swapchain_image_count<
+    set_buffer_usage<vk::BufferUsageFlagBits::eTransferSrc,
+    rename_buffer_vector_to_uniform_buffer_vector<
+    add_buffer_memory_vector<
+    set_buffer_memory_properties<vk::MemoryPropertyFlagBits::eDeviceLocal,
+    add_buffer_vector<
+    set_vector_size_to_swapchain_image_count <
+    add_buffer_usage<vk::BufferUsageFlagBits::eTransferDst,
+    add_buffer_usage<vk::BufferUsageFlagBits::eUniformBuffer,
+    empty_buffer_usage<
+    set_buffer_size<sizeof(uint64_t),
+    add_recreate_surface_for<
+    add_graphics_pipeline <
+    add_pipeline_vertex_input_state <
+    add_vertex_binding_description <
+    add_empty_binding_descriptions <
+    add_vertex_attribute_description <
+    set_vertex_input_attribute_format<vk::Format::eR32G32B32Sfloat,
+    add_empty_vertex_attribute_descriptions <
+    set_binding < 0,
+    set_stride < sizeof(float) * 3,
+    set_input_rate < vk::VertexInputRate::eVertex,
+    set_subpass < 0,
+    add_recreate_surface_for<
+    add_framebuffers_cube <
+    add_render_pass_cube <
+    add_subpasses <
+    add_subpass_dependency <
+    add_empty_subpass_dependencies <
+    add_depth_attachment<
+    add_attachment <
+    add_empty_attachments <
+    add_pipeline_viewport_state <
+    add_scissor_equal_swapchain_extent<
+    add_empty_scissors <
+    add_viewport_equal_swapchain_image_rect <
+    add_empty_viewports <
+    set_tessellation_patch_control_point_count < 1,
+    T
+    >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 {};
 

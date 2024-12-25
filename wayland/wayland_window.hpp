@@ -1,3 +1,5 @@
+#pragma once
+
 #include <stdexcept>
 #include <stdio.h>
 #include <wayland-client.h>
@@ -345,7 +347,6 @@ private:
 };
 } // namespace wl_helper
 
-struct none_t {};
 
 using namespace wl_helper;
 
