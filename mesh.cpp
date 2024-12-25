@@ -294,29 +294,13 @@ using app =
     add_viewport_equal_swapchain_image_rect <
     add_empty_viewports <
     set_tessellation_patch_control_point_count < 1,
-    add_pipeline_stage_to_stages <
-    add_pipeline_stage <
-    set_shader_stage < vk::ShaderStageFlagBits::eMeshEXT,
-    add_shader_module <
-    add_spirv_code <
-    adapte_map_file_to_spirv_code <
-    map_file_mapping <
-    cache_file_size <
-    add_file_mapping <
-    add_file <
-    add_file_path <typeof([]() static { return std::filesystem::path{"shaders/mesh.spv"}; }),
-    add_pipeline_stage_to_stages <
-    add_pipeline_stage <
-    set_shader_stage < vk::ShaderStageFlagBits::eFragment,
+    add_spirv_file_to_pipeline_stages<
+        typeof([]() static {return "shaders/task.spv"s;}), vk::ShaderStageFlagBits::eTaskEXT,
+    add_spirv_file_to_pipeline_stages<
+        typeof([]() static {return "shaders/mesh.spv"s;}), vk::ShaderStageFlagBits::eMeshEXT,
+    add_spirv_file_to_pipeline_stages<
+        typeof([]() static {return "shaders/cube_frag.spv"s;}), vk::ShaderStageFlagBits::eFragment,
     set_shader_entry_name_with_main <
-    add_shader_module <
-    add_spirv_code <
-    adapte_map_file_to_spirv_code <
-    map_file_mapping <
-    cache_file_size <
-    add_file_mapping <
-    add_file <
-    add_file_path <typeof([]() static { return "shaders/cube_frag.spv"s; }),
     add_empty_pipeline_stages <
     add_pipeline_layout <
     add_single_descriptor_set_layout<
@@ -383,8 +367,7 @@ using app =
     none_t
     >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
     >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-    >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-    >>>>>>>>>>>>>>>
+    >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 ;
 
 int main() {

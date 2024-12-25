@@ -55,6 +55,8 @@ add_executable(mesh_test
     cube.hpp
     shaders/mesh.glsl
     shaders/mesh.spv
+    shaders/task.glsl
+    shaders/task.spv
     shaders/cube.frag
     shaders/cube_frag.spv
 )
@@ -99,6 +101,14 @@ add_custom_command(OUTPUT shaders/mesh.spv
 	      -o ${CMAKE_CURRENT_BINARY_DIR}/shaders/mesh.spv
   MAIN_DEPENDENCY ${CMAKE_CURRENT_SOURCE_DIR}/shaders/mesh.glsl
   DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/shaders/mesh.glsl Vulkan::glslangValidator)
+
+add_custom_command(OUTPUT shaders/task.spv
+  COMMAND Vulkan::glslangValidator --target-env vulkan1.3
+              ${CMAKE_CURRENT_SOURCE_DIR}/shaders/task.glsl
+	      -S task
+	      -o ${CMAKE_CURRENT_BINARY_DIR}/shaders/task.spv
+  MAIN_DEPENDENCY ${CMAKE_CURRENT_SOURCE_DIR}/shaders/task.glsl
+  DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/shaders/task.glsl Vulkan::glslangValidator)
 
 add_custom_command(OUTPUT shaders/frag.spv
   COMMAND Vulkan::glslangValidator --target-env vulkan1.3

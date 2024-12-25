@@ -41,17 +41,25 @@ void main() {
         0, 0, 0, 1
     );
     mat4 transform = persp * move * rotate_y * rotate_z; 
-    vec2 values[count+1];
 
-    const float x_width = 10.0;
+    const int t = int(gl_WorkGroupID.x);
+    const int t_sign = (t%2 == 1) ? 1 : -1;
+    const int t_ = t_sign * ((t+1)/2);
+    const float t_width = 10.0;
+
+    const float t_start = t_width * t_;
+    const float t_end   = t_width * t_ + t_width;
+    vec3 values[count+1];
     for (int i = 0; i < count+1; i++) {
-        values[i].x = -x_width/2 + i*x_width/count;
-        values[i].y = values[i].x*values[i].x;
+        float t = t_start + i*(t_end-t_start)/count;
+        values[i].x = cos(t);
+        values[i].y = sin(t);
+        values[i].z = t;
     }
     for (int i = 0; i < count; i++) {
-        gl_MeshVerticesEXT[2*i].gl_Position = transform * vec4(values[i].x,values[i].y,0,1);
+        gl_MeshVerticesEXT[2*i].gl_Position = transform * vec4(values[i].x,values[i].y,values[i].z,1);
         color[2*i] = vec3(1,1,1);
-        gl_MeshVerticesEXT[2*i+1].gl_Position = transform * vec4(values[i+1].x,values[i+1].y,0,1);
+        gl_MeshVerticesEXT[2*i+1].gl_Position = transform * vec4(values[i+1].x,values[i+1].y,values[i+1].z,1);
         color[2*i+1] = vec3(1,1,1.0);
 
         gl_PrimitiveLineIndicesEXT[i] = uvec2(2*i, 2*i+1);

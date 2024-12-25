@@ -230,29 +230,11 @@ using draw_cube_app =
 	add_viewport_equal_swapchain_image_rect <
 	add_empty_viewports <
 	set_tessellation_patch_control_point_count < 1,
-	add_pipeline_stage_to_stages <
-	add_pipeline_stage <
-	set_shader_stage < vk::ShaderStageFlagBits::eVertex,
-	add_shader_module <
-	add_spirv_code <
-	adapte_map_file_to_spirv_code <
-	map_file_mapping <
-	cache_file_size <
-	add_file_mapping <
-	add_file <
-    add_file_path <typeof([]() static { return std::filesystem::path{"shaders/cube_vert.spv"}; }),
-	add_pipeline_stage_to_stages <
-	add_pipeline_stage <
-	set_shader_stage < vk::ShaderStageFlagBits::eFragment,
+    add_spirv_file_to_pipeline_stages<
+        typeof([]() static {return "shaders/cube_vert.spv"s;}), vk::ShaderStageFlagBits::eVertex,
+    add_spirv_file_to_pipeline_stages<
+        typeof([]() static {return "shaders/cube_frag.spv"s;}), vk::ShaderStageFlagBits::eFragment,
 	set_shader_entry_name_with_main <
-	add_shader_module <
-	add_spirv_code <
-	adapte_map_file_to_spirv_code <
-	map_file_mapping <
-	cache_file_size <
-	add_file_mapping <
-	add_file <
-    add_file_path <typeof([]() static { return "shaders/cube_frag.spv"s; }),
 	add_empty_pipeline_stages <
 	add_pipeline_layout <
 	add_single_descriptor_set_layout<
@@ -323,7 +305,7 @@ using draw_cube_app =
 	>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> >
 	>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> >
 	>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-	>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+	>>>>>>>>>>>
 		;
 using clear_debug_app = 
 	add_window_loop <

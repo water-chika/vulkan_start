@@ -799,3 +799,22 @@ public:
   void destroy() {
   }
 };
+
+using namespace vulkan_hpp_helper;
+
+template <std::invocable<> CALL, vk::ShaderStageFlagBits STAGE, class T> class add_spirv_file_to_pipeline_stages
+    : public
+    vulkan_hpp_helper::add_pipeline_stage_to_stages <
+    add_pipeline_stage <
+    set_shader_stage < STAGE,
+    add_shader_module <
+    add_spirv_code <
+    adapte_map_file_to_spirv_code <
+    map_file_mapping <
+    cache_file_size <
+    add_file_mapping <
+    add_file <
+    add_file_path <CALL,
+    T
+    >>>>>>>>>>>
+{};
