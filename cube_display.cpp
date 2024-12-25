@@ -52,16 +52,6 @@ public:
 };
 
 
-template <class T>
-class add_swapchain_image_extent_equal_surface_resolution : public T {
-public:
-  using parent = T;
-  auto get_swapchain_image_extent() {
-    auto [width, height] = parent::get_surface_resolution();
-    return vk::Extent2D{static_cast<uint32_t>(width),
-                        static_cast<uint32_t>(height)};
-  }
-};
 
 template<class T>
 class add_run_loop : public T {

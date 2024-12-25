@@ -2,6 +2,11 @@
 
 #include <stdexcept>
 #include <stdio.h>
+#include <iostream>
+#include <map>
+#include <vector>
+
+#ifdef VK_USE_PLATFORM_WAYLAND_KHR
 #include <wayland-client.h>
 #define _POSIX_C_SOURCE 200112L
 #include <errno.h>
@@ -13,6 +18,7 @@
 #include <unistd.h>
 
 #include "xdg-shell-client-protocol.h"
+
 
 static void randname(char *buf) {
   struct timespec ts;
@@ -221,11 +227,11 @@ static void wl_surface_frame_done(void *data, struct wl_callback *cb,
   state->last_frame = time;
 }
 
-#include <iostream>
-#include <map>
-#include <vector>
+
+
 
 #include <wayland-client.h>
+
 
 namespace wl_helper {
 inline wl_display *display_connect(const char *name) {
@@ -253,21 +259,7 @@ public:
 private:
   wl_display *m_display;
 };
-template <class T> class add_event_loop : public T {
-public:
-  using parent = T;
-  void event_loop() {
-    while (!parent::get_event_loop_should_exit() &&
-           wl_display_dispatch(parent::get_wayland_display()) != -1) {
-      parent::draw();
-    }
-  }
-};
-template <class T> class run_event_loop : public T {
-public:
-  using parent = T;
-  run_event_loop() { parent::event_loop(); }
-};
+
 template <class T> class add_registry_listener : public T {
 public:
   using parent = T;
@@ -350,6 +342,8 @@ private:
 
 using namespace wl_helper;
 
+
+
 void water_chika_set_size_changed_callback(
         our_state& state,
         void (*callback)(int, int, void*), void* user_data) {
@@ -361,10 +355,13 @@ void water_chika_set_size_changed_callback(
       state.size_changed_callback_user_data = user_data;
 }
 
+#endif
+
 template <class T> class add_wayland_surface : public T {
 public:
     static void dummy_size_changed_callback(int, int, void*) {
     }
+#ifdef VK_USE_PLATFORM_WAYLAND_KHR
   add_wayland_surface() : state{} {
       state.size_changed_callback = dummy_size_changed_callback;
     state.width = 640, state.height = 480;
@@ -399,10 +396,33 @@ public:
   auto get_wayland_surface() { return state.surface; }
   auto get_surface_resolution() { return std::pair{state.width, state.height}; }
   auto get_event_loop_should_exit() { return state.closed; }
+#endif
   void set_size_changed_callback(void (*callback)(int, int, void*), void* user_data) {
+#ifdef VK_USE_PLATFORM_WAYLAND_KHR
       water_chika_set_size_changed_callback(state, callback, user_data);
+#endif
   }
 
+#ifdef VK_USE_PLATFORM_WAYLAND_KHR
 private:
   struct our_state state;
+#endif
+};
+
+template <class T> class add_event_loop : public T {
+public:
+  using parent = T;
+  void event_loop() {
+#ifdef VK_USE_PLATFORM_WAYLAND_KHR
+    while (!parent::get_event_loop_should_exit() &&
+           wl_display_dispatch(parent::get_wayland_display()) != -1) {
+      parent::draw();
+    }
+#endif
+  }
+};
+template <class T> class run_event_loop : public T {
+public:
+  using parent = T;
+  run_event_loop() { parent::event_loop(); }
 };

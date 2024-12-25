@@ -4,7 +4,16 @@
 #include <string>
 #include <vulkan_helper.hpp>
 
-#include "wayland/wayland_window.hpp"
+namespace vulkan_start {
+enum class platform {
+    win32,
+    wayland,
+    display,
+};
+
+
+} // namespace vulkan_start
+
 
 template <class T> class rename_images : public T {
 public:
@@ -1195,3 +1204,141 @@ template <class T> class add_dummy_recreate_surface : public T {
 public:
   void recreate_surface() {}
 };
+
+template <class T>
+class add_swapchain_image_extent_equal_surface_resolution : public T {
+public:
+  using parent = T;
+  auto get_swapchain_image_extent() {
+    auto [width, height] = parent::get_surface_resolution();
+    return vk::Extent2D{static_cast<uint32_t>(width),
+                        static_cast<uint32_t>(height)};
+  }
+};
+
+
+namespace vulkan_start {
+
+template<platform PLATFORM>
+class use_platform {
+};
+
+template<platform PLATFORM>
+class use_platform_add_swapchain_image_extent {
+public:
+template<class T>
+class add_swapchain_image_extent
+    : public add_swapchain_image_extent_equal_surface_current_extent<T> {
+};
+};
+
+template<platform PLATFORM>
+class use_platform_add_cube_physical_device_and_device_and_draw {
+public:
+
+template<class T>
+class add_cube_physical_device_and_device_and_draw
+    : public
+    add_cube_resources_and_draw<
+    add_spirv_file_to_pipeline_stages<
+        typeof([]() static {return std::string{"shaders/cube_vert.spv"};}), vk::ShaderStageFlagBits::eVertex,
+    add_spirv_file_to_pipeline_stages<
+        typeof([]() static {return std::string{"shaders/cube_frag.spv"};}), vk::ShaderStageFlagBits::eFragment,
+	set_shader_entry_name_with_main <
+	add_empty_pipeline_stages <
+	add_cube_swapchain_and_pipeline_layout<
+    typename use_platform_add_swapchain_image_extent<PLATFORM>::template add_swapchain_image_extent<
+	add_command_pool <
+	add_queue <
+	add_device <
+	add_swapchain_extension <
+	add_empty_extensions <
+	add_find_properties <
+	cache_physical_device_memory_properties<
+	add_recreate_surface_for<
+	cache_surface_capabilities<
+	add_recreate_surface_for<
+	test_physical_device_support_surface<
+	add_queue_family_index <
+  add_physical_device<
+  T
+  >>>>>>>>>>>>>>>>>>>>
+{};
+}; // class use_platform_*
+
+} // namespace vulkan_start
+
+#include "cube_wayland.hpp"
+#include "cube_windows.hpp"
+#include "wayland/wayland_window.hpp"
+
+
+#if !defined(WS_OVERLAPPEDWINDOW)
+#define WS_OVERLAPPEDWINDOW 0
+#endif
+
+using namespace windows_helper;
+using namespace vulkan_hpp_helper;
+using namespace std::literals;
+template <template<typename> typename C> class run_on_windows_platform
+  : public
+  add_window_loop <
+	jump_draw_if_window_minimized <
+  C<
+  add_recreate_surface<
+	vulkan_windows_helper::add_windows_surface<
+	add_instance<
+	add_win32_surface_extension<
+	add_surface_extension<
+	add_empty_extensions<
+	add_window<
+	adjust_window_resolution<
+	set_window_resolution<151, 151,
+	set_window_style<WS_OVERLAPPEDWINDOW,
+	add_window_class<
+	add_window_process<
+  empty_class
+  >>>>>>>>>>>>>>>
+{};
+
+namespace wayland_platform {
+using namespace vulkan_hpp_helper;
+
+
+template<class T>
+class register_size_change_callback : public T{
+public:
+    using parent = T;
+    using this_type = register_size_change_callback<T>;
+    register_size_change_callback() {
+        parent::set_size_changed_callback(size_changed_callback, this);
+    }
+    static void size_changed_callback(int width, int height, void* data) {
+        auto th = reinterpret_cast<this_type*>(data);
+        th->size_changed(width, height);
+    }
+    void size_changed(int width, int height) {
+        parent::recreate_surface();
+    }
+};
+
+template <template<typename> typename C> class run_on_wayland_platform
+  : public
+    run_event_loop<
+    add_event_loop<
+    register_size_change_callback<
+    C<
+    add_recreate_surface_for<
+    vulkan_start::use_platform<vulkan_start::platform::wayland>::add_vulkan_surface<
+    add_dummy_recreate_surface<
+    add_instance<
+    add_wayland_surface_extension<
+    add_surface_extension<
+    add_empty_extensions<
+    add_wayland_surface<
+    empty_class
+    >>>>>>>>>>>>
+{};
+}
+
+using wayland_platform::run_on_wayland_platform;

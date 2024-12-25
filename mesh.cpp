@@ -40,25 +40,6 @@ public:
     return ext;
   }
 };
-template <class T> class add_wayland_surface_extension : public T {
-public:
-  auto get_extensions() {
-    auto ext = T::get_extensions();
-    ext.push_back(vk::KHRWaylandSurfaceExtensionName);
-    return ext;
-  }
-};
-
-template <class T>
-class add_swapchain_image_extent_equal_surface_resolution : public T {
-public:
-  using parent = T;
-  auto get_swapchain_image_extent() {
-    auto [width, height] = parent::get_surface_resolution();
-    return vk::Extent2D{static_cast<uint32_t>(width),
-                        static_cast<uint32_t>(height)};
-  }
-};
 
 template<class T>
 class register_size_change_callback : public T{
