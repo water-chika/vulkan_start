@@ -7,16 +7,6 @@ add_subdirectory(vulkan_helper)
 
 if(WIN32)
 
-add_executable(triangle
-    triangle.cpp
-    shaders/vert.spv
-    shaders/test.vert
-    shaders/frag.spv
-    shaders/test.frag
-)
-target_link_libraries(triangle PUBLIC vulkan_helper)
-set_target_properties(triangle PROPERTIES CXX_STANDARD 23)
-
 add_executable(cube
     cube_windows.cpp
     cube.hpp
@@ -27,12 +17,6 @@ add_executable(cube
 )
 target_link_libraries(cube PUBLIC vulkan_helper)
 set_target_properties(cube PROPERTIES CXX_STANDARD 23)
-
-add_executable(ray_tracing
-    ray_tracing.cpp
-)
-target_link_libraries(ray_tracing PUBLIC vulkan_helper)
-set_target_properties(ray_tracing PROPERTIES CXX_STANDARD 23)
 
 else()
 find_library(wayland-client wayland-client)
