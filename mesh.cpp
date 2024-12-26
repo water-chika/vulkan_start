@@ -1,6 +1,5 @@
 #define VK_USE_PLATFORM_WAYLAND_KHR
 #include "cube.hpp"
-#include <chrono>
 
 using app =
   vulkan_start::run_on_wayland_platform<

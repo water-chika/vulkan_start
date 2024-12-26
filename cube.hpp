@@ -35,6 +35,7 @@ public:
     record_swapchain_command_buffers() = delete;
 };
 
+
 };
 
 template<class T>
@@ -538,6 +539,10 @@ public:
   void destroy() {}
 }; // class record_swapchain_command_buffers in use_app<app::cube>
 
+template <class T>
+class add_physical_device : public ::vulkan_hpp_helper::add_physical_device<T> {
+};
+
 template <class T> class add_resources_and_draw
   : public
     add_frame_time_analyser<
@@ -713,6 +718,14 @@ public:
   }
   void destroy() {}
 }; // class record_swapchain_command_buffers in use_app<app::mesh_test>
+
+template <class T>
+class add_physical_device
+    : public
+      vulkan_hpp_helper::add_physical_device_with_extension<
+        typeof([]() static { return vk::EXTMeshShaderExtensionName;;}),
+      T> {
+};
 
 template <class T> class add_resources_and_draw
   : public
@@ -974,16 +987,17 @@ class add_swapchain_image_extent
 };
 };
 
-template<platform PLATFORM>
-class use_platform_add_physical_device_and_surface {
+template<app APP, platform PLATFORM>
+class set_app_and_platform {
 public:
 template<class T>
 class add_physical_device_and_surface
     : public
-    add_physical_device<
+    use_app<APP>::add_physical_device<
+    add_recreate_surface<
     typename use_platform<PLATFORM>::template add_vulkan_surface<
     T
-    >>
+    >>>
 {};
 };
 
@@ -1014,7 +1028,7 @@ class add_cube_physical_device_and_device_and_draw
 	add_recreate_surface_for<
 	test_physical_device_support_surface<
 	add_queue_family_index <
-  typename use_platform_add_physical_device_and_surface<PLATFORM>::template add_physical_device_and_surface<
+  typename set_app_and_platform<app::cube, PLATFORM>::template add_physical_device_and_surface<
   T
   >>>>>>>>>>>>>>>>>>>>
 {};
@@ -1051,7 +1065,7 @@ class add_mesh_physical_device_and_device_and_draw
 	add_recreate_surface_for<
 	test_physical_device_support_surface<
 	add_queue_family_index <
-  typename use_platform_add_physical_device_and_surface<PLATFORM>::template add_physical_device_and_surface<
+  typename set_app_and_platform<app::mesh_test, PLATFORM>::template add_physical_device_and_surface<
   T
   >>>>>>>>>>>>>>>>>>>>>>
 {};
@@ -1076,7 +1090,6 @@ template <template<typename> typename C> class run_on_windows_platform
   : public
   use_platform<platform::win32>::add_event_loop<
   C<
-  add_recreate_surface<
 	add_instance<
 	use_platform<platform::win32>::add_platform_needed_extensions<
 	add_surface_extension<
@@ -1088,7 +1101,7 @@ template <template<typename> typename C> class run_on_windows_platform
 	add_window_class<
 	add_window_process<
   empty_class
-  >>>>>>>>>>>>>
+  >>>>>>>>>>>>
 {};
 
 
@@ -1130,14 +1143,13 @@ template <template<typename> typename C> class run_on_wayland_platform
     use_platform<platform::wayland>::add_event_loop<
     register_size_change_callback<
     C<
-    add_dummy_recreate_surface<
     add_instance<
     use_platform<platform::wayland>::add_platform_needed_extensions<
     add_surface_extension<
     add_empty_extensions<
     add_wayland_surface<
     empty_class
-    >>>>>>>>>
+    >>>>>>>>
 {};
 }
 

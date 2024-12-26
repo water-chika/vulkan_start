@@ -12,12 +12,12 @@ template <class T> class add_vulkan_surface : public T {
 public:
   using parent = T;
   add_vulkan_surface() {
-      create();
+      create_surface();
   }
   ~add_vulkan_surface() {
-      destroy();
+      destroy_surface();
   }
-  void create()
+  void create_surface()
 #ifdef VK_USE_PLATFORM_WAYLAND_KHR
   {
     auto instance = parent::get_instance();
@@ -31,9 +31,9 @@ public:
 #else
   {
     throw std::runtime_error{"wayland surface is not supported"};
-  };
+  }
 #endif
-  void destroy()
+  void destroy_surface()
   {
     auto instance = parent::get_instance();
     instance.destroySurfaceKHR(m_surface);

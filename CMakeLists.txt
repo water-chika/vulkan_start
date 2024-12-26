@@ -18,6 +18,20 @@ add_executable(cube
 target_link_libraries(cube PUBLIC vulkan_helper)
 set_target_properties(cube PROPERTIES CXX_STANDARD 23)
 
+add_executable(mesh_test
+    mesh_win32.cpp
+    cube.hpp
+    shaders/mesh.glsl
+    shaders/mesh.spv
+    shaders/task.glsl
+    shaders/task.spv
+    shaders/cube.frag
+    shaders/cube_frag.spv
+)
+target_link_libraries(mesh_test PUBLIC vulkan_helper)
+target_include_directories(mesh_test PUBLIC)
+set_target_properties(mesh_test PROPERTIES CXX_STANDARD 23)
+
 else()
 find_library(wayland-client wayland-client)
 add_executable(cube

@@ -24,7 +24,7 @@ public:
             }
         }
 #else
-        throw std::runtime{"unsupported platform"};
+        throw std::runtime_error{"unsupported platform"};
 #endif
     }
 };
@@ -37,12 +37,12 @@ template <class T> class add_vulkan_surface : public T {
 public:
   using parent = T;
   add_vulkan_surface() {
-      create();
+      create_surface();
   }
   ~add_vulkan_surface() {
-      destroy();
+      destroy_surface();
   }
-  void create() {
+  void create_surface() {
       auto physical_device = parent::get_physical_device();
       auto display_properties = physical_device.getDisplayPropertiesKHR();
       auto display = display_properties.at(0).display;
@@ -61,7 +61,7 @@ public:
       auto instance = parent::get_instance();
       m_surface = instance.createDisplayPlaneSurfaceKHR(create_info);
   }
-  void destroy() {
+  void destroy_surface() {
   }
   auto get_surface() { return m_surface; }
   auto get_surface_resolution() { return m_surface_extent; }
@@ -95,14 +95,14 @@ class add_event_loop
 }; // class use_platform<platform::display>
 
 template<>
-class use_platform_add_physical_device_and_surface<platform::display> {
+class set_app_and_platform<app::cube, platform::display> {
 public:
 template<class T>
 class add_physical_device_and_surface
     : public
-    add_dummy_recreate_surface<
+    add_recreate_surface<
     use_platform<platform::display>::add_vulkan_surface<
-    add_physical_device<
+    use_app<app::cube>::add_physical_device<
     T
     >>>
 {};
