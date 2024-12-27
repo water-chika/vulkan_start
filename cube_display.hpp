@@ -45,12 +45,21 @@ public:
   void create_surface() {
       auto physical_device = parent::get_physical_device();
       auto display_properties = physical_device.getDisplayPropertiesKHR();
+      if (display_properties.size() == 0) {
+          throw std::runtime_error{"vulkan physical device get displayPropertiesKHR: display properties count is 0"};
+      }
       auto display = display_properties.at(0).display;
       auto plane_properties = physical_device.getDisplayPlanePropertiesKHR();
+      if (plane_properties.size() == 0) {
+          throw std::runtime_error{"vulkan physical device get displayPlanePropertiesKHR: display plane properties count is 0"};
+      }
       auto plane_index = 0;
       auto plane_current_display = plane_properties.at(plane_index).currentDisplay;
       auto plane_current_stack_index = plane_properties.at(plane_index).currentStackIndex;
       auto mode_properties = physical_device.getDisplayModePropertiesKHR(display);
+      if (mode_properties.size() == 0) {
+          throw std::runtime_error{"vulkan physical device get displayModePropertiesKHR: display mode properties count is 0"};
+      }
       auto mode = mode_properties.at(0).displayMode;
       auto plane_capabilities = physical_device.getDisplayPlaneCapabilitiesKHR(mode, plane_index);
       m_surface_extent = plane_capabilities.maxDstExtent;
@@ -94,15 +103,15 @@ class add_event_loop
 
 }; // class use_platform<platform::display>
 
-template<>
-class set_app_and_platform<app::cube, platform::display> {
+template<app APP>
+class set_app_and_platform<APP, platform::display> {
 public:
 template<class T>
 class add_physical_device_and_surface
     : public
     add_recreate_surface<
     use_platform<platform::display>::add_vulkan_surface<
-    use_app<app::cube>::add_physical_device<
+    typename use_app<APP>::template add_physical_device<
     T
     >>>
 {};
