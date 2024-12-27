@@ -135,6 +135,23 @@ public:
 private:
   vk::DescriptorSetLayoutBinding m_binding;
 };
+
+template <class T> class add_mesh_descriptor_set_layout_binding : public T {
+public:
+  using parent = T;
+  add_mesh_descriptor_set_layout_binding() {
+    vk::ShaderStageFlagBits stages = vk::ShaderStageFlagBits::eMeshEXT;
+    m_binding = vk::DescriptorSetLayoutBinding{}
+                    .setBinding(0)
+                    .setDescriptorCount(1)
+                    .setDescriptorType(vk::DescriptorType::eUniformBuffer)
+                    .setStageFlags(stages);
+  }
+  auto get_descriptor_set_layout_bindings() { return m_binding; }
+
+private:
+  vk::DescriptorSetLayoutBinding m_binding;
+};
 template <class T> class add_descriptor_pool : public T {
 public:
   using parent = T;
@@ -933,6 +950,51 @@ template <class T> class add_cube_swapchain_and_pipeline_layout
   >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 {};
 
+template <class T> class add_mesh_swapchain_and_pipeline_layout
+  : public
+  add_pipeline_layout<
+	add_single_descriptor_set_layout<
+	add_descriptor_set_layout<
+	add_mesh_descriptor_set_layout_binding<
+	set_pipeline_rasterization_polygon_mode< vk::PolygonMode::eFill,
+	disable_pipeline_multisample<
+	set_pipeline_input_topology< vk::PrimitiveTopology::eTriangleList,
+	disable_pipeline_dynamic<
+	enable_pipeline_depth_test<
+	add_pipeline_color_blend_state_create_info<
+	disable_pipeline_attachment_color_blend< 0, // disable index 0 attachment
+	add_pipeline_color_blend_attachment_states< 1, // 1 attachment
+	rename_images_views_to_depth_images_views<
+	add_recreate_surface_for<
+	barrier_depth_image_layout<
+	add_recreate_surface_for<
+	add_depth_images_views_cube<
+	add_recreate_surface_for<
+	add_images_memories<
+	add_image_memory_property<vk::MemoryPropertyFlagBits::eDeviceLocal,
+	add_empty_image_memory_properties<
+	add_recreate_surface_for<
+	add_images<
+	add_image_type<vk::ImageType::e2D,
+	set_image_tiling<vk::ImageTiling::eOptimal,
+	set_image_samples<vk::SampleCountFlagBits::e1,
+	add_image_extent_equal_swapchain_image_extent<
+	add_image_usage<vk::ImageUsageFlagBits::eDepthStencilAttachment,
+	add_empty_image_usages<
+	rename_image_format_to_depth_image_format<
+	add_image_format<vk::Format::eD32Sfloat,
+	add_image_count_equal_swapchain_image_count<
+	add_recreate_surface_for<
+	add_swapchain_images_views<
+	add_recreate_surface_for<
+	add_swapchain_images<
+	add_recreate_surface_for<
+	add_swapchain<
+	add_swapchain_image_format<
+  T
+  >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+{};
+
 template <class T> class add_dummy_recreate_surface : public T {
 public:
   void recreate_surface() {}
@@ -1050,11 +1112,26 @@ class add_mesh_physical_device_and_device_and_draw
         typeof([]() static {return std::string{"shaders/cube_frag.spv"};}), vk::ShaderStageFlagBits::eFragment,
 	set_shader_entry_name_with_main <
 	add_empty_pipeline_stages <
-	add_cube_swapchain_and_pipeline_layout<
+	add_mesh_swapchain_and_pipeline_layout<
     typename use_platform_add_swapchain_image_extent<PLATFORM>::template add_swapchain_image_extent<
 	add_command_pool <
 	add_queue <
-	add_device <
+	add_device_with_features <
+        typeof(
+            []() static {
+                auto features = vk::StructureChain<
+                vk::PhysicalDeviceFeatures2,
+                vk::PhysicalDeviceMeshShaderFeaturesEXT,
+                vk::PhysicalDeviceMaintenance4Features
+                >{};
+                auto& [features2, mesh_shader_features, maintenance4_features] = features;
+                mesh_shader_features.meshShader = vk::True;
+                mesh_shader_features.taskShader = vk::True;
+                maintenance4_features.maintenance4 = vk::True;
+                return features;
+            }
+        )
+        ,
 	add_swapchain_extension <
     add_extension<typeof([]() static { return vk::EXTMeshShaderExtensionName; }),
 	add_empty_extensions <
