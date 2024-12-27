@@ -1055,7 +1055,7 @@ public:
 template<class T>
 class add_physical_device_and_surface
     : public
-    use_app<APP>::add_physical_device<
+    use_app<APP>::template add_physical_device<
     add_recreate_surface<
     typename use_platform<PLATFORM>::template add_vulkan_surface<
     T
