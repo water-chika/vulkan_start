@@ -71,6 +71,8 @@ public:
       m_surface = instance.createDisplayPlaneSurfaceKHR(create_info);
   }
   void destroy_surface() {
+      auto instance = parent::get_instance();
+      instance.destroySurfaceKHR(m_surface);
   }
   auto get_surface() { return m_surface; }
   auto get_surface_resolution() { return m_surface_extent; }
