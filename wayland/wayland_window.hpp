@@ -87,51 +87,11 @@ static void buffer_release(void *data, struct wl_buffer *buffer) {
 static const struct wl_buffer_listener buffer_listener = {
     .release = buffer_release,
 };
-static struct wl_buffer *draw_frame(struct our_state *state) {
-  const int width = state->width, height = state->height;
-  int stride = width * 4;
-  int size = stride * height;
-  int fd = allocate_shm_file(size);
-  if (fd == -1) {
-    return NULL;
-  }
-
-  uint32_t *data =
-      (uint32_t *)mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
-  if (data == MAP_FAILED) {
-    close(fd);
-    return NULL;
-  }
-
-  struct wl_shm_pool *pool = wl_shm_create_pool(state->shm, fd, size);
-  struct wl_buffer *buffer = wl_shm_pool_create_buffer(
-      pool, 0, width, height, stride, WL_SHM_FORMAT_XRGB8888);
-  wl_shm_pool_destroy(pool);
-  close(fd);
-
-  int offset = (int)state->offset % 8;
-  for (int y = 0; y < height; ++y) {
-    for (int x = 0; x < width; ++x) {
-      if (((x + offset) + (y + offset) / 8 * 8) % 16 < 8)
-        data[y * width + x] = 0xFF666666;
-      else
-        data[y * width + x] = 0xFFFFFFFF;
-    }
-  }
-
-  munmap(data, size);
-  wl_buffer_add_listener(buffer, &buffer_listener, NULL);
-  return buffer;
-}
 
 static void xdg_surface_configure(void *data, struct xdg_surface *xdg_surface,
                                   uint32_t serial) {
   struct our_state *state = (struct our_state *)data;
   xdg_surface_ack_configure(xdg_surface, serial);
-
-  struct wl_buffer *buffer = draw_frame(state);
-  wl_surface_attach(state->surface, buffer, 0, 0);
-  wl_surface_commit(state->surface);
 }
 
 static const struct xdg_surface_listener xdg_surface_listener = {
@@ -184,10 +144,6 @@ static void xdg_toplevel_configure(void *data,
       state->width = width;
       state->height = height;
       state->size_changed = true;
-      struct wl_buffer *buffer = draw_frame(state);
-      wl_surface_attach(state->surface, buffer, 0, 0);
-      wl_surface_commit(state->surface);
-      wl_display_roundtrip(state->display);
       state->size_changed_callback(width, height,
               state->size_changed_callback_user_data);
   }
@@ -202,36 +158,8 @@ static const struct xdg_toplevel_listener xdg_toplevel_listener = {
     .configure = xdg_toplevel_configure,
     .close = xdg_toplevel_close,
 };
-static void wl_surface_frame_done(void *data, struct wl_callback *cb,
-                                  uint32_t time);
-static const struct wl_callback_listener wl_surface_frame_listener = {
-    .done = wl_surface_frame_done,
-};
-
-static void wl_surface_frame_done(void *data, struct wl_callback *cb,
-                                  uint32_t time) {
-  wl_callback_destroy(cb);
-
-  struct our_state *state = (struct our_state *)data;
-  cb = wl_surface_frame(state->surface);
-  wl_callback_add_listener(cb, &wl_surface_frame_listener, state);
-
-  if (state->last_frame != 0) {
-    int elapsed = time - state->last_frame;
-    state->offset += elapsed / 1000.0 * 24;
-  }
-
-  wl_surface_damage_buffer(state->surface, 0, 0, INT32_MAX, INT32_MAX);
-  wl_surface_commit(state->surface);
-
-  state->last_frame = time;
-}
-
-
-
 
 #include <wayland-client.h>
-
 
 namespace wl_helper {
 inline wl_display *display_connect(const char *name) {
@@ -386,11 +314,6 @@ public:
     wl_surface_commit(state.surface);
 
     wl_display_roundtrip(state.display);
-
-    struct wl_callback *cb = wl_surface_frame(state.surface);
-    wl_callback_add_listener(cb, &wl_surface_frame_listener, &state);
-    wl_surface_commit(state.surface);
-    wl_display_roundtrip(state.display);
   }
   auto get_wayland_display() { return state.display; }
   auto get_wayland_surface() { return state.surface; }
@@ -414,9 +337,11 @@ public:
   using parent = T;
   void event_loop() {
 #ifdef VK_USE_PLATFORM_WAYLAND_KHR
-    while (!parent::get_event_loop_should_exit() &&
-           wl_display_dispatch(parent::get_wayland_display()) != -1) {
-      parent::draw();
+    while (!parent::get_event_loop_should_exit()) {
+        if (wl_display_dispatch_pending(parent::get_wayland_display())) {
+            wl_display_dispatch(parent::get_wayland_display());
+        }
+        parent::draw();
     }
 #endif
   }
