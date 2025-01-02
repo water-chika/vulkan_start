@@ -255,6 +255,17 @@ private:
     std::chrono::steady_clock::time_point m_start_time;
 };
 
+template<class T>
+class add_queue_wait_idle_to_recreate_surface : public T {
+public:
+    using parent = T;
+    void recreate_surface() {
+        auto queue = parent::get_queue();
+        queue.waitIdle();
+        parent::recreate_surface();
+    }
+};
+
 template <class T> class add_dynamic_draw : public T {
 public:
   using parent = T;
@@ -330,7 +341,6 @@ public:
       need_recreate_surface = true;
     }
     if (need_recreate_surface) {
-      queue.waitIdle();
       parent::process_suboptimal_image();
     }
   }
@@ -567,6 +577,7 @@ template <class T> class add_resources_and_draw
     add_get_time <
     add_process_suboptimal_image<
         typeof([](auto* p) static {p->recreate_surface();std::cout << "recreate surface" << std::endl;}),
+    add_queue_wait_idle_to_recreate_surface<
     add_acquire_next_image_semaphores <
     add_acquire_next_image_semaphore_fences <
     add_draw_semaphores <
@@ -634,7 +645,7 @@ template <class T> class add_resources_and_draw
     add_empty_viewports <
     set_tessellation_patch_control_point_count < 1,
     T
-    >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+    >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 {};
 }; // class use_app<app::cube>
@@ -751,6 +762,7 @@ template <class T> class add_resources_and_draw
     add_get_time <
     add_process_suboptimal_image<
         typeof([](auto* p) static {p->recreate_surface();std::cout << "recreate surface" << std::endl;}),
+    add_queue_wait_idle_to_recreate_surface<
     add_acquire_next_image_semaphores <
     add_acquire_next_image_semaphore_fences <
     add_draw_semaphores <
@@ -809,7 +821,7 @@ template <class T> class add_resources_and_draw
     add_empty_viewports <
     set_tessellation_patch_control_point_count < 1,
     T
-    >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+    >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 {};
 }; // class use_app<app::mesh_test>
@@ -1196,7 +1208,6 @@ template <template<typename> typename C> class run_on_display_platform
 
 namespace wayland_platform {
 using namespace vulkan_hpp_helper;
-
 
 template<class T>
 class register_size_change_callback : public T{
