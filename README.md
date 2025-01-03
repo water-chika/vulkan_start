@@ -6,7 +6,13 @@ Windows need clang to build because msvc doesn't support many C++23 features.
 
 # How to run
 
-```cd build; ./cube```
+## run cube demo
+
+```cd build; ./demo```
+
+## run mesh demo
+
+```cd build; ./demo mesh```
 
 ## run on linux display:
 

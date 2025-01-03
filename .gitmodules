@@ -1,3 +1,6 @@
 [submodule "vulkan_helper"]
 	path = vulkan_helper
 	url = https://github.com/water-chika/vulkan_helper
+[submodule "win32_helper"]
+	path = win32_helper
+	url = https://github.com/water-chika/win32_helper

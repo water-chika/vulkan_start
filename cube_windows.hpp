@@ -1,10 +1,11 @@
 #pragma once
 
+#include <win32_helper.hpp>
+
 namespace vulkan_start {
 
 template <class T> class add_window_process : public T {
 public:
-#ifdef WIN32
   static LRESULT CALLBACK window_process(HWND hwnd, UINT uMsg, WPARAM wParam,
                                          LPARAM lParam) {
     static std::map<HWND, add_window_process<T> *> hwnd_this{};
@@ -34,7 +35,6 @@ public:
     m_height = height;
   }
   bool is_window_minimized() { return m_width == 0 || m_height == 0; }
-#endif
 
 private:
   static add_window_process<T> *m_this;
@@ -43,24 +43,22 @@ private:
 };
 template <class T> class add_window_class : public T {
 public:
-#ifdef WIN32
   using parent = T;
   add_window_class() {
     const char *window_class_name = "draw_pixels";
     WNDCLASS window_class{};
-    window_class.hInstance = GetModuleHandle(NULL);
+    window_class.hInstance = GetModuleHandle(nullptr);
     window_class.lpszClassName = window_class_name;
     window_class.lpfnWndProc = parent::window_process;
     m_window_class = RegisterClass(&window_class);
   }
   ~add_window_class() {
-    UnregisterClass(reinterpret_cast<LPCSTR>(m_window_class), GetModuleHandle(NULL));
+    UnregisterClass(reinterpret_cast<LPCSTR>(m_window_class), GetModuleHandle(nullptr));
   }
   auto get_window_class() { return m_window_class; }
 
 private:
   ATOM m_window_class;
-#endif
 };
 template <int Width, int Height, class T>
 class set_window_resolution : public T {
@@ -76,7 +74,6 @@ template <class T> class adjust_window_resolution : public T {
 public:
   using parent = T;
   adjust_window_resolution() {
-#ifdef WIN32
     auto width = parent::get_window_width();
     auto height = parent::get_window_height();
     auto window_style = parent::get_window_style();
@@ -84,7 +81,6 @@ public:
     AdjustWindowRect(&rect, window_style, false);
     m_width = rect.right - rect.left;
     m_height = rect.bottom - rect.top;
-#endif
   }
   auto get_window_width() { return m_width; }
   auto get_window_height() { return m_height; }
@@ -100,23 +96,18 @@ public:
     int width = parent::get_window_width();
     int height = parent::get_window_height();
     int window_style = parent::get_window_style();
-#ifdef WIN32
     m_window =
         CreateWindowA(reinterpret_cast<LPCSTR>(parent::get_window_class()), "draw_pixels",
                       window_style, CW_USEDEFAULT, CW_USEDEFAULT, width, height,
-                      NULL, NULL, GetModuleHandle(NULL), parent::get_lparam());
-    if (m_window == NULL) {
+                      nullptr, nullptr, GetModuleHandle(nullptr), parent::get_lparam());
+    if (m_window == nullptr) {
       throw std::runtime_error("failed to create window");
     }
     ShowWindow(m_window, SW_SHOWNORMAL);
-#endif
   }
   auto get_window() { return m_window; }
 
 private:
-#ifndef WIN32
-  typedef int HWND;
-#endif
   HWND m_window;
 };
 
@@ -132,11 +123,11 @@ public:
   add_vulkan_surface() { create_surface(); }
   ~add_vulkan_surface() { destroy_surface(); }
   void create_surface() {
-#ifdef WIN32
+#ifdef VULKAN_HPP_USING_PLATFORM_WIN32_KHR
     vk::Instance instance = parent::get_instance();
     m_surface =
         instance.createWin32SurfaceKHR(vk::Win32SurfaceCreateInfoKHR{}
-                                           .setHinstance(GetModuleHandleA(NULL))
+                                           .setHinstance(GetModuleHandle(nullptr))
                                            .setHwnd(parent::get_window()));
 #else
     throw std::runtime_error{"Win32 surface is not supported"};
@@ -160,19 +151,16 @@ template <class T> class add_event_loop : public jump_draw_if_window_minimized<T
 public:
   using parent = T;
   add_event_loop() {
-#ifdef WIN32
     MSG msg = {};
     while (msg.message != WM_QUIT) {
-      if (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE)) {
+      if (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE)) {
         TranslateMessage(&msg);
         DispatchMessage(&msg);
       } else {
         parent::draw();
       }
     }
-#else
     throw std::runtime_error{"Windows event loop is not supported"};
-#endif
   }
 }; // class add_event_loop
 template <class T> class add_window
@@ -183,9 +171,6 @@ public:
       return m_window.get_window();
     }
 private:
-#if !defined(WS_OVERLAPPEDWINDOW)
-#define WS_OVERLAPPEDWINDOW 0
-#endif
     vulkan_start::add_window<
 	  adjust_window_resolution<
 	  set_window_resolution<151, 151,

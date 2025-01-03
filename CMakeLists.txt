@@ -4,64 +4,33 @@ project(vulkan_start)
 
 find_package(Vulkan REQUIRED)
 add_subdirectory(vulkan_helper)
+add_subdirectory(win32_helper)
 
-if(WIN32)
-
-add_executable(cube
-    cube_windows.cpp
-    cube.hpp
-    shaders/cube.vert
-    shaders/cube_vert.spv
-    shaders/cube.frag
-    shaders/cube_frag.spv
-)
-target_link_libraries(cube PUBLIC vulkan_helper)
-set_target_properties(cube PROPERTIES CXX_STANDARD 23)
-
-add_executable(mesh_test
-    mesh_win32.cpp
-    cube.hpp
-    shaders/mesh.glsl
-    shaders/mesh.spv
-    shaders/task.glsl
-    shaders/task.spv
-    shaders/cube.frag
-    shaders/cube_frag.spv
-)
-target_link_libraries(mesh_test PUBLIC vulkan_helper)
-target_include_directories(mesh_test PUBLIC)
-set_target_properties(mesh_test PROPERTIES CXX_STANDARD 23)
-
-else()
 find_library(wayland-client wayland-client)
-add_executable(cube
-    cube_linux.cpp
-    wayland/xdg-shell-protocol.c
+
+add_executable(demo
+    cube.cpp
     cube.hpp
     shaders/cube.vert
     shaders/cube_vert.spv
     shaders/cube.frag
     shaders/cube_frag.spv
-)
-target_link_libraries(cube PUBLIC vulkan_helper wayland-client)
-target_include_directories(cube PUBLIC wayland)
-set_target_properties(cube PROPERTIES CXX_STANDARD 23)
-
-add_executable(mesh_test
-    mesh.cpp
-    wayland/xdg-shell-protocol.c
-    cube.hpp
     shaders/mesh.glsl
     shaders/mesh.spv
     shaders/task.glsl
     shaders/task.spv
-    shaders/cube.frag
-    shaders/cube_frag.spv
 )
-target_link_libraries(mesh_test PUBLIC vulkan_helper wayland-client)
-target_include_directories(mesh_test PUBLIC wayland)
-set_target_properties(mesh_test PROPERTIES CXX_STANDARD 23)
+if(NOT ${wayland-client} EQUAL "wayland-client-NOTFOUND")
+    target_sources(demo
+        PUBLIC wayland/xdg-shell-protocol.c
+    )
+    target_link_libraries(demo  PUBLIC wayland-client)
+    target_include_directories(demo PUBLIC wayland)
+endif()
+target_link_libraries(demo PUBLIC vulkan_helper win32_helper)
+set_target_properties(demo PROPERTIES CXX_STANDARD 23)
 
+if(NOT WIN32)
 add_executable(cube_display
     cube_display.cpp
     cube.hpp
@@ -70,7 +39,7 @@ add_executable(cube_display
     shaders/cube.frag
     shaders/cube_frag.spv
 )
-target_link_libraries(cube_display PUBLIC vulkan_helper)
+target_link_libraries(cube_display PUBLIC vulkan_helper win32_helper)
 target_include_directories(cube_display PUBLIC wayland)
 set_target_properties(cube_display PROPERTIES CXX_STANDARD 23)
 
