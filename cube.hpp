@@ -1182,13 +1182,13 @@ using namespace std::literals;
 
 template <platform PLATFORM, template<typename> typename C> class run_on_platform
   : public
-  use_platform<PLATFORM>::add_event_loop<
+  use_platform<PLATFORM>::template add_event_loop<
   C<
 	add_instance<
-	typename use_platform<PLATFORM>::add_platform_needed_extensions<
+	typename use_platform<PLATFORM>::template add_platform_needed_extensions<
 	add_surface_extension<
 	add_empty_extensions<
-	typename use_platform<PLATFORM>::add_window<
+	typename use_platform<PLATFORM>::template add_window<
   empty_class
   >>>>>>>
 {};
