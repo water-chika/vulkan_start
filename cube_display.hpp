@@ -103,6 +103,10 @@ class add_event_loop
 {
 }; // class add_event_loop
 
+template<class T>
+class add_window : T {
+};
+
 }; // class use_platform<platform::display>
 
 template<app APP>

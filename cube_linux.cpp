@@ -6,7 +6,7 @@
 using namespace std::literals;
 
 using app =
-  vulkan_start::run_on_wayland_platform<
+  vulkan_start::run_on_platform<vulkan_start::platform::wayland,
       vulkan_start::use_platform_add_cube_physical_device_and_device_and_draw<vulkan_start::platform::wayland>::
         add_cube_physical_device_and_device_and_draw
 >

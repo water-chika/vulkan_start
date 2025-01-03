@@ -2,7 +2,7 @@
 #include "cube.hpp"
 
 using app =
-  vulkan_start::run_on_display_platform<
+  vulkan_start::run_on_platform<vulkan_start::platform::display,
       vulkan_start::use_platform_add_cube_physical_device_and_device_and_draw<vulkan_start::platform::display>::
         add_cube_physical_device_and_device_and_draw
   >

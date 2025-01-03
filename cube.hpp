@@ -1050,6 +1050,13 @@ public:
     add_event_loop() = delete;
 };
 
+template<class T>
+class add_window : public T
+{
+public:
+    add_window() = delete;
+};
+
 };
 
 template<platform PLATFORM>
@@ -1169,77 +1176,21 @@ class add_mesh_physical_device_and_device_and_draw
 
 namespace vulkan_start {
 
-#if !defined(WS_OVERLAPPEDWINDOW)
-#define WS_OVERLAPPEDWINDOW 0
-#endif
 
 using namespace vulkan_hpp_helper;
 using namespace std::literals;
-template <template<typename> typename C> class run_on_windows_platform
+
+template <platform PLATFORM, template<typename> typename C> class run_on_platform
   : public
-  use_platform<platform::win32>::add_event_loop<
+  use_platform<PLATFORM>::add_event_loop<
   C<
 	add_instance<
-	use_platform<platform::win32>::add_platform_needed_extensions<
+	typename use_platform<PLATFORM>::add_platform_needed_extensions<
 	add_surface_extension<
 	add_empty_extensions<
-	add_window<
-	adjust_window_resolution<
-	set_window_resolution<151, 151,
-	set_window_style<WS_OVERLAPPEDWINDOW,
-	add_window_class<
-	add_window_process<
+	typename use_platform<PLATFORM>::add_window<
   empty_class
-  >>>>>>>>>>>>
+  >>>>>>>
 {};
 
-
-template <template<typename> typename C> class run_on_display_platform
-  : public
-    use_platform<platform::display>::add_event_loop<
-  C<
-    add_instance<
-    use_platform<platform::display>::add_platform_needed_extensions<
-    add_surface_extension<
-    add_empty_extensions<
-  empty_class
-  >>>>>>
-{};
-
-namespace wayland_platform {
-using namespace vulkan_hpp_helper;
-
-template<class T>
-class register_size_change_callback : public T{
-public:
-    using parent = T;
-    using this_type = register_size_change_callback<T>;
-    register_size_change_callback() {
-        parent::set_size_changed_callback(size_changed_callback, this);
-    }
-    static void size_changed_callback(int width, int height, void* data) {
-        auto th = reinterpret_cast<this_type*>(data);
-        th->size_changed(width, height);
-    }
-    void size_changed(int width, int height) {
-        parent::recreate_surface();
-    }
-};
-
-template <template<typename> typename C> class run_on_wayland_platform
-  : public
-    use_platform<platform::wayland>::add_event_loop<
-    register_size_change_callback<
-    C<
-    add_instance<
-    use_platform<platform::wayland>::add_platform_needed_extensions<
-    add_surface_extension<
-    add_empty_extensions<
-    add_wayland_surface<
-    empty_class
-    >>>>>>>>
-{};
-}
-
-using wayland_platform::run_on_wayland_platform;
 }

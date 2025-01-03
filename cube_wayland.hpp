@@ -50,9 +50,36 @@ class add_platform_needed_extensions : public add_wayland_surface_extension<T>
 }; // add_platform_needed_extensions
 
 template<class T>
-class add_event_loop : public run_wayland_event_loop<add_wayland_event_loop<T>>
+class register_size_change_callback : public T{
+public:
+    using parent = T;
+    using this_type = register_size_change_callback<T>;
+    register_size_change_callback() {
+        parent::set_size_changed_callback(size_changed_callback, this);
+    }
+    static void size_changed_callback(int width, int height, void* data) {
+        auto th = reinterpret_cast<this_type*>(data);
+        th->size_changed(width, height);
+    }
+    void size_changed(int width, int height) {
+        parent::recreate_surface();
+    }
+};
+
+
+template<class T>
+class add_event_loop
+    : public
+      run_wayland_event_loop<
+      add_wayland_event_loop<
+      register_size_change_callback<
+      T>>>
 {
 }; // class add_event_loop
+
+template<class T>
+class add_window : public add_wayland_surface<T>
+{}; // class add_window
 
 }; // use_platform<platform::wayland>
 

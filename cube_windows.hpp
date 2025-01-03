@@ -95,12 +95,12 @@ private:
 };
 template <class T> class add_window : public T {
 public:
-#ifdef WIN32
   using parent = T;
   add_window() {
     int width = parent::get_window_width();
     int height = parent::get_window_height();
     int window_style = parent::get_window_style();
+#ifdef WIN32
     m_window =
         CreateWindowA(reinterpret_cast<LPCSTR>(parent::get_window_class()), "draw_pixels",
                       window_style, CW_USEDEFAULT, CW_USEDEFAULT, width, height,
@@ -109,12 +109,15 @@ public:
       throw std::runtime_error("failed to create window");
     }
     ShowWindow(m_window, SW_SHOWNORMAL);
+#endif
   }
   auto get_window() { return m_window; }
 
 private:
-  HWND m_window;
+#ifndef WIN32
+  typedef int HWND;
 #endif
+  HWND m_window;
 };
 
 
@@ -172,5 +175,24 @@ public:
 #endif
   }
 }; // class add_event_loop
+template <class T> class add_window
+    : public T
+{
+public:
+    auto get_window() {
+      return m_window.get_window();
+    }
+private:
+#if !defined(WS_OVERLAPPEDWINDOW)
+#define WS_OVERLAPPEDWINDOW 0
+#endif
+    vulkan_start::add_window<
+	  adjust_window_resolution<
+	  set_window_resolution<151, 151,
+	  set_window_style<WS_OVERLAPPEDWINDOW,
+	  add_window_class<
+	  add_window_process<
+    empty_class>>>>>> m_window;
+}; // class add_window
 }; // class use_platform<platform::win32>
 } // namespace vulkan_start
