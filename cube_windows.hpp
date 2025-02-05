@@ -123,7 +123,7 @@ public:
   add_vulkan_surface() { create_surface(); }
   ~add_vulkan_surface() { destroy_surface(); }
   void create_surface() {
-#ifdef VULKAN_HPP_USING_PLATFORM_WIN32_KHR
+#ifdef VK_USE_PLATFORM_WIN32_KHR
     vk::Instance instance = parent::get_instance();
     m_surface =
         instance.createWin32SurfaceKHR(vk::Win32SurfaceCreateInfoKHR{}
@@ -160,7 +160,6 @@ public:
         parent::draw();
       }
     }
-    throw std::runtime_error{"Windows event loop is not supported"};
   }
 }; // class add_event_loop
 template <class T> class add_window

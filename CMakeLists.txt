@@ -11,6 +11,7 @@ find_library(wayland-client wayland-client)
 add_executable(demo
     cube.cpp
     cube.hpp
+    cube_windows.hpp
     shaders/cube.vert
     shaders/cube_vert.spv
     shaders/cube.frag
@@ -20,7 +21,8 @@ add_executable(demo
     shaders/task.glsl
     shaders/task.spv
 )
-if(NOT ${wayland-client} EQUAL "wayland-client-NOTFOUND")
+if(NOT ${wayland-client} MATCHES "wayland-client-NOTFOUND")
+    message(WARNING ${wayland-client})
     target_sources(demo
         PUBLIC wayland/xdg-shell-protocol.c
     )

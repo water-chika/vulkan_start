@@ -116,7 +116,7 @@ private:
 };
 template <std::invocable<> CALL, class T> class add_file_path : public T {
 public:
-    auto get_file_path() { return CALL::operator()(); }
+    auto get_file_path() { return CALL{}(); }
 };
 
 template <class T> class add_cube_descriptor_set_layout_binding : public T {
@@ -240,7 +240,8 @@ template <class F, class T> class add_process_suboptimal_image : public T {
 public:
     using parent = T;
     void process_suboptimal_image() {
-        F::operator()(this);
+        F f;
+        f(this);
     }
 };
 
@@ -576,7 +577,7 @@ template <class T> class add_resources_and_draw
     add_dynamic_draw <
     add_get_time <
     add_process_suboptimal_image<
-        typeof([](auto* p) static {p->recreate_surface();std::cout << "recreate surface" << std::endl;}),
+        decltype([](auto* p) {p->recreate_surface();std::cout << "recreate surface" << std::endl;}),
     add_queue_wait_idle_to_recreate_surface<
     add_acquire_next_image_semaphores <
     add_acquire_next_image_semaphore_fences <
@@ -751,7 +752,7 @@ template <class T>
 class add_physical_device
     : public
       vulkan_hpp_helper::add_physical_device_with_extension<
-        typeof([]() static { return vk::EXTMeshShaderExtensionName;;}),
+        decltype([]() { return vk::EXTMeshShaderExtensionName;;}),
       T> {
 };
 
@@ -761,7 +762,7 @@ template <class T> class add_resources_and_draw
     add_dynamic_draw <
     add_get_time <
     add_process_suboptimal_image<
-        typeof([](auto* p) static {p->recreate_surface();std::cout << "recreate surface" << std::endl;}),
+        decltype([](auto* p) {p->recreate_surface();std::cout << "recreate surface" << std::endl;}),
     add_queue_wait_idle_to_recreate_surface<
     add_acquire_next_image_semaphores <
     add_acquire_next_image_semaphore_fences <
@@ -893,7 +894,7 @@ template <std::invocable CALL, class T> class add_extension : public T {
 public:
   auto get_extensions() {
     auto ext = T::get_extensions();
-    ext.push_back(CALL::operator()());
+    ext.push_back(CALL{}());
     return ext;
   }
 };
@@ -1090,9 +1091,9 @@ class add_cube_physical_device_and_device_and_draw
     : public
     use_app<app::cube>::add_resources_and_draw<
     add_spirv_file_to_pipeline_stages<
-        typeof([]() static {return std::string{"shaders/cube_vert.spv"};}), vk::ShaderStageFlagBits::eVertex,
+        decltype([]() {return std::string{"shaders/cube_vert.spv"};}), vk::ShaderStageFlagBits::eVertex,
     add_spirv_file_to_pipeline_stages<
-        typeof([]() static {return std::string{"shaders/cube_frag.spv"};}), vk::ShaderStageFlagBits::eFragment,
+        decltype([]() {return std::string{"shaders/cube_frag.spv"};}), vk::ShaderStageFlagBits::eFragment,
 	set_shader_entry_name_with_main <
 	add_empty_pipeline_stages <
 	add_cube_swapchain_and_pipeline_layout<
@@ -1124,11 +1125,11 @@ class add_mesh_physical_device_and_device_and_draw
     : public
     use_app<app::mesh_test>::add_resources_and_draw<
     add_spirv_file_to_pipeline_stages<
-        typeof([]() static {return std::string{"shaders/task.spv"};}), vk::ShaderStageFlagBits::eTaskEXT,
+        decltype([]() {return std::string{"shaders/task.spv"};}), vk::ShaderStageFlagBits::eTaskEXT,
     add_spirv_file_to_pipeline_stages<
-        typeof([]() static {return std::string{"shaders/mesh.spv"};}), vk::ShaderStageFlagBits::eMeshEXT,
+        decltype([]() {return std::string{"shaders/mesh.spv"};}), vk::ShaderStageFlagBits::eMeshEXT,
     add_spirv_file_to_pipeline_stages<
-        typeof([]() static {return std::string{"shaders/cube_frag.spv"};}), vk::ShaderStageFlagBits::eFragment,
+        decltype([]() {return std::string{"shaders/cube_frag.spv"};}), vk::ShaderStageFlagBits::eFragment,
 	set_shader_entry_name_with_main <
 	add_empty_pipeline_stages <
 	add_mesh_swapchain_and_pipeline_layout<
@@ -1136,8 +1137,8 @@ class add_mesh_physical_device_and_device_and_draw
 	add_command_pool <
 	add_queue <
 	add_device_with_features <
-        typeof(
-            []() static {
+        decltype(
+            []() {
                 auto features = vk::StructureChain<
                 vk::PhysicalDeviceFeatures2,
                 vk::PhysicalDeviceMeshShaderFeaturesEXT,
@@ -1152,7 +1153,7 @@ class add_mesh_physical_device_and_device_and_draw
         )
         ,
 	add_swapchain_extension <
-    add_extension<typeof([]() static { return vk::EXTMeshShaderExtensionName; }),
+    add_extension<decltype([]() { return vk::EXTMeshShaderExtensionName; }),
 	add_empty_extensions <
 	add_find_properties <
 	cache_physical_device_memory_properties<
