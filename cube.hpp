@@ -4,20 +4,11 @@
 #include <string>
 #include <vulkan_helper.hpp>
 
+#include "vulkan_start.hpp"
+
 namespace vulkan_start {
 
 using namespace vulkan_hpp_helper;
-enum class platform {
-    win32,
-    wayland,
-    display,
-};
-
-template <class T> class rename_images : public T {
-public:
-  using parent = T;
-  auto get_intermediate_images() { return parent::get_images(); }
-};
 
 enum class app {
     fast_debug,
@@ -56,40 +47,6 @@ private:
     PFN_vkCmdDrawMeshTasksEXT m_vk_cmd_draw_mesh_tasks_ext;
 };
 
-using namespace std::chrono;
-template<class T>
-class add_frame_time_analyser : public T{
-public:
-    using parent = T;
-    add_frame_time_analyser() {
-    }
-    void draw() {
-        const int update_frames_count = 10000;
-        if (m_frame_index % update_frames_count == 0) {
-            auto now = steady_clock::now();
-            m_frame_time = (now - m_last_time_point) / update_frames_count;
-            double fps = 1000000000.0/m_frame_time.count();
-            std::clog
-                << "frame time: "
-                << std::setw(10)
-                << m_frame_time.count()/1000000.0
-                << "ms"
-                << "fps: "
-                << fps
-                << "\t\r";
-            m_last_time_point = now;
-        }
-
-        parent::draw();
-
-        m_frame_index++;
-    }
-private:
-    nanoseconds m_frame_time;
-    uint64_t m_frame_index;
-    time_point<steady_clock, nanoseconds> m_last_time_point;
-};
-
 template <class T> class add_cube_vertex_buffer_data : public T {
 public:
   auto get_buffer_size() { return m_data.size() * sizeof(m_data[0]); }
@@ -113,10 +70,6 @@ private:
       0, 1, 3, 0, 3, 2, 4, 6, 7, 4, 7, 5, 1, 5, 7, 1, 7, 3,
       3, 7, 6, 3, 6, 2, 2, 6, 4, 2, 4, 0, 0, 4, 5, 0, 5, 1,
   };
-};
-template <std::invocable<> CALL, class T> class add_file_path : public T {
-public:
-    auto get_file_path() { return CALL{}(); }
 };
 
 template <class T> class add_cube_descriptor_set_layout_binding : public T {
@@ -901,22 +854,6 @@ public:
 
 using namespace vulkan_hpp_helper;
 
-template <std::invocable<> CALL, vk::ShaderStageFlagBits STAGE, class T> class add_spirv_file_to_pipeline_stages
-    : public
-    vulkan_hpp_helper::add_pipeline_stage_to_stages <
-    add_pipeline_stage <
-    set_shader_stage < STAGE,
-    add_shader_module <
-    add_spirv_code <
-    adapte_map_file_to_spirv_code <
-    map_file_mapping <
-    cache_file_size <
-    add_file_mapping <
-    add_file <
-    add_file_path <CALL,
-    T
-    >>>>>>>>>>>
-{};
 
 template <class T> class add_cube_swapchain_and_pipeline_layout
   : public
@@ -1011,62 +948,6 @@ template <class T> class add_mesh_swapchain_and_pipeline_layout
 template <class T> class add_dummy_recreate_surface : public T {
 public:
   void recreate_surface() {}
-};
-
-template <class T>
-class add_swapchain_image_extent_equal_surface_resolution : public T {
-public:
-  using parent = T;
-  auto get_swapchain_image_extent() {
-    auto [width, height] = parent::get_surface_resolution();
-    return vk::Extent2D{static_cast<uint32_t>(width),
-                        static_cast<uint32_t>(height)};
-  }
-};
-
-
-
-template<platform PLATFORM>
-class use_platform {
-public:
-
-template<class T>
-class add_vulkan_surface : public T
-{
-public:
-    add_vulkan_surface() = delete;
-};
-
-template<class T>
-class add_platform_needed_extensions : public T
-{
-public:
-    add_platform_needed_extensions() = delete;
-};
-
-template<class T>
-class add_event_loop : public T
-{
-public:
-    add_event_loop() = delete;
-};
-
-template<class T>
-class add_window : public T
-{
-public:
-    add_window() = delete;
-};
-
-};
-
-template<platform PLATFORM>
-class use_platform_add_swapchain_image_extent {
-public:
-template<class T>
-class add_swapchain_image_extent
-    : public add_swapchain_image_extent_equal_surface_current_extent<T> {
-};
 };
 
 template<app APP, platform PLATFORM>
@@ -1168,30 +1049,20 @@ class add_mesh_physical_device_and_device_and_draw
 {};
 }; // class use_platform_*
 
+template<app APP>
+class set_app_and_platform<APP, platform::display> {
+public:
+template<class T>
+class add_physical_device_and_surface
+    : public
+    add_recreate_surface<
+    use_platform<platform::display>::add_vulkan_surface<
+    typename use_app<APP>::template add_physical_device<
+    T
+    >>>
+{};
+};
+
+
 } // namespace vulkan_start
 
-#include "cube_wayland.hpp"
-#include "cube_windows.hpp"
-#include "wayland/wayland_window.hpp"
-#include "cube_display.hpp"
-
-namespace vulkan_start {
-
-
-using namespace vulkan_hpp_helper;
-using namespace std::literals;
-
-template <platform PLATFORM, template<typename> typename C> class run_on_platform
-  : public
-  use_platform<PLATFORM>::template add_event_loop<
-  C<
-	add_instance<
-	typename use_platform<PLATFORM>::template add_platform_needed_extensions<
-	add_surface_extension<
-	add_empty_extensions<
-	typename use_platform<PLATFORM>::template add_window<
-  empty_class
-  >>>>>>>
-{};
-
-}

@@ -109,20 +109,6 @@ class add_window : T {
 
 }; // class use_platform<platform::display>
 
-template<app APP>
-class set_app_and_platform<APP, platform::display> {
-public:
-template<class T>
-class add_physical_device_and_surface
-    : public
-    add_recreate_surface<
-    use_platform<platform::display>::add_vulkan_surface<
-    typename use_app<APP>::template add_physical_device<
-    T
-    >>>
-{};
-};
-
 
 } //namespace vulkan_start
 

@@ -6,6 +6,12 @@ find_package(Vulkan REQUIRED)
 
 find_library(wayland-client wayland-client)
 
+add_library(vulkan_start INTERFACE
+    vulkan_start.hpp
+)
+
+target_include_directories(vulkan_start INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
+
 add_executable(demo
     cube.cpp
     cube.hpp
