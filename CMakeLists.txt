@@ -3,8 +3,6 @@ cmake_minimum_required(VERSION 3.20)
 project(vulkan_start)
 
 find_package(Vulkan REQUIRED)
-add_subdirectory(vulkan_helper)
-add_subdirectory(win32_helper)
 
 find_library(wayland-client wayland-client)
 
