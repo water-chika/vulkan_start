@@ -6,16 +6,18 @@ find_package(Vulkan REQUIRED)
 
 find_library(wayland-client wayland-client)
 
-add_library(vulkan_start INTERFACE
+add_library(vulkan_start
     vulkan_start.hpp
+    vulkan_start.cpp
 )
 
-target_include_directories(vulkan_start INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
+target_include_directories(vulkan_start PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(vulkan_start PUBLIC vulkan_helper win32_helper)
+set_target_properties(vulkan_start PROPERTIES CXX_STANDARD 20)
 
 add_executable(demo
     cube.cpp
     cube.hpp
-    cube_windows.hpp
     shaders/cube.vert
     shaders/cube_vert.spv
     shaders/cube.frag
@@ -27,13 +29,13 @@ add_executable(demo
 )
 if(NOT ${wayland-client} MATCHES "wayland-client-NOTFOUND")
     message(WARNING ${wayland-client})
-    target_sources(demo
+    target_sources(vulkan_start
         PUBLIC wayland/xdg-shell-protocol.c
     )
-    target_link_libraries(demo  PUBLIC wayland-client)
-    target_include_directories(demo PUBLIC wayland)
+    target_link_libraries(vulkan_start  PUBLIC wayland-client)
+    target_include_directories(vulkan_start PUBLIC wayland)
 endif()
-target_link_libraries(demo PUBLIC vulkan_helper win32_helper)
+target_link_libraries(demo PUBLIC vulkan_start)
 set_target_properties(demo PROPERTIES CXX_STANDARD 23)
 
 if(NOT WIN32)
