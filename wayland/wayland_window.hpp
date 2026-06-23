@@ -338,9 +338,9 @@ public:
   void event_loop() {
 #ifdef VK_USE_PLATFORM_WAYLAND_KHR
     while (!parent::get_event_loop_should_exit()) {
-        if (wl_display_dispatch_pending(parent::get_wayland_display())) {
-            wl_display_dispatch(parent::get_wayland_display());
-        }
+        // Dispath without blocking
+        wl_display_dispatch_pending(parent::get_wayland_display());
+
         parent::draw();
     }
 #endif
