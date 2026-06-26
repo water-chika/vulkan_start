@@ -68,6 +68,9 @@ struct our_state {
   struct wl_shm *shm;
   struct xdg_wm_base *wm_base;
 
+  struct wl_seat *seat;
+  struct wl_keyboard *keyboard;
+
   struct wl_surface *surface;
   struct xdg_surface *xdg_surface;
   struct xdg_toplevel *toplevel;
@@ -107,6 +110,66 @@ static const struct xdg_wm_base_listener xdg_wm_base_listener = {
     .ping = xdg_wm_base_ping,
 };
 
+static void wl_keyboard_keymap(void* data, struct wl_keyboard* keyboard,
+        uint32_t keymap_format, int fd, uint32_t size) {
+}
+
+static void wl_keyboard_enter(void* data, struct wl_keyboard* keyboard,
+        uint32_t serial, wl_surface* surface, wl_array* keys) {
+}
+
+static void wl_keyboard_leave(void* data, struct wl_keyboard* keyboard,
+        uint32_t serial, wl_surface* surface) {
+}
+
+static void wl_keyboard_key(void* data, struct wl_keyboard* keyboard,
+        uint32_t serial, uint32_t time, uint32_t key, uint32_t key_state) {
+    std::clog << "wayland: keyboard: key: " <<
+        serial << ", " << time << ", " << key << ", " << key_state << std::endl;
+}
+
+static void wl_keyboard_modifiers(void* data, struct wl_keyboard* keyboard,
+        uint32_t serial, uint32_t mods_depressed, uint32_t mods_latched, uint32_t mods_locked, uint32_t group) {
+}
+
+static void wl_keyboard_repeat_info(void* data, struct wl_keyboard* keyboard,
+        int rate, int delay) {
+}
+
+static const struct wl_keyboard_listener wl_keyboard_listener = {
+    .keymap = wl_keyboard_keymap,
+    .enter = wl_keyboard_enter,
+    .leave = wl_keyboard_leave,
+    .key = wl_keyboard_key,
+    .modifiers = wl_keyboard_modifiers,
+    .repeat_info = wl_keyboard_repeat_info,
+};
+
+static void wl_seat_capabilities(void* data, struct wl_seat* seat, uint32_t capability) {
+    std::clog << "wayland: seat: capabilities: " << capability << std::endl;
+    struct our_state *state = (struct our_state *)data;
+    if (capability & WL_SEAT_CAPABILITY_KEYBOARD){
+        if (state->keyboard == NULL) {
+            state->keyboard = wl_seat_get_keyboard(seat);
+            wl_keyboard_add_listener(state->keyboard, &wl_keyboard_listener, state);
+        }
+    }
+    else {
+        if (state->keyboard != NULL) {
+            wl_keyboard_release(state->keyboard);
+        }
+    }
+}
+
+static void wl_seat_name(void* data, struct wl_seat* seat, const char* name) {
+    std::clog << "wayland: seat: name: " << name << std::endl;
+}
+
+static const struct wl_seat_listener wl_seat_listener = {
+    .capabilities = wl_seat_capabilities,
+    .name = wl_seat_name,
+};
+
 static void registry_handle_global(void *data, struct wl_registry *registry,
                                    uint32_t name, const char *interface,
                                    uint32_t version) {
@@ -114,13 +177,23 @@ static void registry_handle_global(void *data, struct wl_registry *registry,
   if (strcmp(interface, wl_compositor_interface.name) == 0) {
     state->compositor = (wl_compositor *)wl_registry_bind(
         registry, name, &wl_compositor_interface, 4);
-  } else if (strcmp(interface, wl_shm_interface.name) == 0) {
+  }
+  else if (strcmp(interface, wl_shm_interface.name) == 0) {
     state->shm =
         (wl_shm *)wl_registry_bind(registry, name, &wl_shm_interface, 1);
-  } else if (strcmp(interface, xdg_wm_base_interface.name) == 0) {
+  }
+  else if (strcmp(interface, xdg_wm_base_interface.name) == 0) {
     state->wm_base = (xdg_wm_base *)wl_registry_bind(registry, name,
                                                      &xdg_wm_base_interface, 1);
     xdg_wm_base_add_listener(state->wm_base, &xdg_wm_base_listener, state);
+  }
+  else if (strcmp(interface, wl_seat_interface.name) == 0) {
+    state->seat = (wl_seat *)wl_registry_bind(registry, name,
+            &wl_seat_interface, 9);
+    wl_seat_add_listener(state->seat, &wl_seat_listener, state);
+  }
+  else {
+    std::clog << "wayland: not handled interface: " << interface << "(v" << version << ")" << std::endl;
   }
 }
 static void registry_handle_global_remove(void *data,
@@ -179,7 +252,7 @@ public:
     }
   }
   ~add_display() {
-    std::clog << "display disconnect" << std::endl;
+    std::clog << "wayland: display disconnect" << std::endl;
     wl_display_disconnect(m_display);
   }
   auto get_display() { return m_display; }
