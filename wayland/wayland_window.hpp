@@ -5,10 +5,11 @@
 #include <iostream>
 #include <map>
 #include <vector>
+#include <array>
 
 #ifdef VK_USE_PLATFORM_WAYLAND_KHR
 #include <wayland-client.h>
-#define _POSIX_C_SOURCE 200112L
+//#define _POSIX_C_SOURCE 200112L
 #include <errno.h>
 #include <fcntl.h>
 #include <stdbool.h>
@@ -423,4 +424,31 @@ template <class T> class run_wayland_event_loop : public T {
 public:
   using parent = T;
   run_wayland_event_loop() { parent::event_loop(); }
+};
+
+#include <poll.h>
+template<typename T>
+class add_wayland_pollfd : public T {
+public:
+    using parent = T;
+    static constexpr int FDS_INDEX = parent::FDS_SIZE;
+    static constexpr int FDS_SIZE = parent::FDS_SIZE+1;
+    std::array<struct pollfd, FDS_SIZE> get_fds() {
+        std::array<pollfd, FDS_SIZE> res{};
+        auto fds = parent::get_fds();
+        std::copy(fds.begin(), fds.end(), res.begin());
+        res.back() = pollfd{
+            .fd = wl_display_get_fd(parent::get_wayland_display()),
+            .events = POLLIN,
+        };
+        return res;
+    }
+    void process_events(auto& fds) {
+        if (fds[FDS_INDEX].revents & POLLIN) {
+            auto display = parent::get_wayland_display();
+            wl_display_read_events(display);
+            wl_display_dispatch_pending(display);
+        }
+        parent::process_events(fds);
+    }
 };

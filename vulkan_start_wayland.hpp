@@ -77,6 +77,15 @@ class add_event_loop
 {
 }; // class add_event_loop
 
+template<typename T>
+class add_pollfds
+    : public
+      add_wayland_pollfd<
+      register_size_change_callback<
+      T
+      >>
+{}; // class template add_pollfds
+
 template<class T>
 class add_window : public add_wayland_surface<T>
 {}; // class add_window
