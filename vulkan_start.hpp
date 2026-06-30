@@ -127,7 +127,7 @@ template<class T>
 class add_frame_time_analyser : public T{
 public:
     using parent = T;
-    add_frame_time_analyser() {
+    add_frame_time_analyser(const configure auto& conf) : parent{conf} {
     }
     void draw() {
         const int update_frames_count = 10000;

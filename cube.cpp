@@ -32,11 +32,11 @@ int main(int argc, const char* argv[]) {
   try {
     if (argc < 2 || "cube"s == argv[1])
     {
-      auto app = draw_cube_app{};
+      draw_cube_app app{vulkan_hpp_helper::empty_configure{}};
     }
     else
     {
-      auto app = draw_mesh_app{};
+      draw_mesh_app app{vulkan_hpp_helper::empty_configure{}};
     }
   } catch (std::exception &e) {
     std::cerr << e.what() << std::endl;

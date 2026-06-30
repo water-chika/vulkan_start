@@ -33,7 +33,7 @@ template<class T>
 class add_vk_cmd_draw_mesh_tasks_ext : public T {
 public:
     using parent = T;
-    add_vk_cmd_draw_mesh_tasks_ext() {
+    add_vk_cmd_draw_mesh_tasks_ext(const configure auto& conf) : parent{conf} {
         m_vk_cmd_draw_mesh_tasks_ext = reinterpret_cast<PFN_vkCmdDrawMeshTasksEXT>(vkGetInstanceProcAddr(parent::get_instance(), "vkCmdDrawMeshTasksEXT"));
     }
     static constexpr auto getVkHeaderVersion() {
@@ -75,7 +75,7 @@ private:
 template <class T> class add_cube_descriptor_set_layout_binding : public T {
 public:
   using parent = T;
-  add_cube_descriptor_set_layout_binding() {
+  add_cube_descriptor_set_layout_binding(const configure auto& conf) : parent{conf}{
     vk::ShaderStageFlagBits stages = vk::ShaderStageFlagBits::eVertex;
     m_binding = vk::DescriptorSetLayoutBinding{}
                     .setBinding(0)
@@ -92,7 +92,7 @@ private:
 template <class T> class add_mesh_descriptor_set_layout_binding : public T {
 public:
   using parent = T;
-  add_mesh_descriptor_set_layout_binding() {
+  add_mesh_descriptor_set_layout_binding(const configure auto& conf) : parent{conf} {
     vk::ShaderStageFlagBits stages = vk::ShaderStageFlagBits::eMeshEXT;
     m_binding = vk::DescriptorSetLayoutBinding{}
                     .setBinding(0)
@@ -108,7 +108,7 @@ private:
 template <class T> class add_descriptor_pool : public T {
 public:
   using parent = T;
-  add_descriptor_pool() { create(); }
+  add_descriptor_pool(const configure auto& conf) : parent{conf} { create(); }
   ~add_descriptor_pool() { destroy(); }
   void create() {
     vk::Device device = parent::get_device();
@@ -133,7 +133,7 @@ private:
 template <class T> class add_nonfree_descriptor_set : public T {
 public:
   using parent = T;
-  add_nonfree_descriptor_set() { create(); }
+  add_nonfree_descriptor_set(const configure auto& conf) : parent{conf} { create(); }
   ~add_nonfree_descriptor_set() { destroy(); }
   void create() {
     vk::Device device = parent::get_device();
@@ -161,7 +161,7 @@ public:
 template <class T> class write_descriptor_set : public T {
 public:
   using parent = T;
-  write_descriptor_set() { create(); }
+  write_descriptor_set(const configure auto& conf) : parent{conf} { create(); }
   auto create() {
     vk::Device device = parent::get_device();
     std::vector<vk::Buffer> buffers = parent::get_uniform_buffer_vector();
@@ -200,7 +200,8 @@ public:
 
 template <class T> class add_get_time : public T {
 public:
-    add_get_time() : m_start_time{std::chrono::steady_clock::now()}{
+    using parent = T;
+    add_get_time(const configure auto& conf) : parent{conf}, m_start_time{std::chrono::steady_clock::now()}{
     }
     auto get_time() {
         return std::chrono::steady_clock::now() - m_start_time;
@@ -309,7 +310,7 @@ public:
 template <class T> class add_render_pass_cube : public T {
 public:
   using parent = T;
-  add_render_pass_cube() {
+  add_render_pass_cube(const configure auto& conf) : parent{conf} {
     vk::Device device = parent::get_device();
     auto attachments = parent::get_attachments();
     auto dependencies = parent::get_subpass_dependencies();
@@ -342,7 +343,7 @@ private:
 template <class T> class add_framebuffers_cube : public T {
 public:
   using parent = T;
-  add_framebuffers_cube() { create_framebuffers(); }
+  add_framebuffers_cube(const configure auto& conf) : parent{conf} { create_framebuffers(); }
   ~add_framebuffers_cube() { destroy_framebuffers(); }
   void create() {
       create_framebuffers();
@@ -387,7 +388,9 @@ private:
 template <class T> class add_depth_images_views_cube : public T {
 public:
   using parent = T;
-  add_depth_images_views_cube() { create(); }
+  add_depth_images_views_cube(const configure auto& conf) : parent{conf} {
+      create();
+  }
   ~add_depth_images_views_cube() { destroy(); }
   void create() {
     vk::Device device = parent::get_device();
@@ -427,7 +430,7 @@ public:
 template <class T> class record_swapchain_command_buffers : public T {
 public:
   using parent = T;
-  record_swapchain_command_buffers() { create(); }
+  record_swapchain_command_buffers(const configure auto& conf) : parent{conf} { create(); }
   void create() {
     auto buffers = parent::get_swapchain_command_buffers();
     auto swapchain_images = parent::get_swapchain_images();
@@ -612,7 +615,7 @@ public:
 template <class T> class record_swapchain_command_buffers : public T {
 public:
   using parent = T;
-  record_swapchain_command_buffers() { create(); }
+  record_swapchain_command_buffers(const configure auto& conf) : parent{conf} { create(); }
   void create() {
     auto buffers = parent::get_swapchain_command_buffers();
     auto swapchain_images = parent::get_swapchain_images();
@@ -827,7 +830,7 @@ static void water_chika_vulkan_barrier_depth_image_layout(
 template <class T> class barrier_depth_image_layout : public T {
 public:
   using parent = T;
-  barrier_depth_image_layout() {
+  barrier_depth_image_layout(const configure auto& conf) : parent{conf} {
       create();
   }
   void create() {

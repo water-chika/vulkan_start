@@ -11,7 +11,7 @@ public:
 template <class T> class add_vulkan_surface : public T {
 public:
   using parent = T;
-  add_vulkan_surface() {
+  add_vulkan_surface(const configure auto& conf) : parent{conf} {
       create_surface();
   }
   ~add_vulkan_surface() {
@@ -54,7 +54,7 @@ class register_size_change_callback : public T{
 public:
     using parent = T;
     using this_type = register_size_change_callback<T>;
-    register_size_change_callback() {
+    register_size_change_callback(const configure auto& conf) : parent{conf} {
         parent::set_size_changed_callback(size_changed_callback, this);
     }
     static void size_changed_callback(int width, int height, void* data) {
@@ -75,20 +75,29 @@ class add_event_loop
       register_size_change_callback<
       T>>>
 {
+public:
+    using parent = run_wayland_event_loop<add_wayland_event_loop<register_size_change_callback<T>>>;
+    add_event_loop(const configure auto& conf) : parent{conf} {
+    }
+    add_event_loop(const add_event_loop&) = delete;
+    add_event_loop(add_event_loop&&) = default;
 }; // class add_event_loop
 
 template<typename T>
-class add_pollfds
-    : public
+using add_pollfds =
       add_wayland_pollfd<
       register_size_change_callback<
       T
       >>
-{}; // class template add_pollfds
+; // template add_pollfds
 
 template<class T>
 class add_window : public add_wayland_surface<T>
-{}; // class add_window
+{
+public:
+    using parent = add_wayland_surface<T>;
+    add_window(const configure auto& conf) : parent{conf} {}
+}; // class add_window
 
 }; // use_platform<platform::wayland>
 
@@ -99,6 +108,10 @@ public:
 template<class T>
 class add_swapchain_image_extent
     : public add_swapchain_image_extent_equal_surface_resolution<T> {
+public:
+    using parent = add_swapchain_image_extent_equal_surface_resolution<T>;
+    add_swapchain_image_extent(const configure auto& conf) : parent{conf} {
+    }
 };
 };
 

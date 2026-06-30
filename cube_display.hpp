@@ -9,7 +9,7 @@ template<class T>
 class add_run_loop : public T {
 public:
     using parent = T;
-    add_run_loop() {
+    add_run_loop(const configure auto& conf) : parent{conf} {
 #ifdef linux
         while (true) {
             parent::draw();
@@ -36,7 +36,7 @@ public:
 template <class T> class add_vulkan_surface : public T {
 public:
   using parent = T;
-  add_vulkan_surface() {
+  add_vulkan_surface(const configure auto& conf) : parent{conf} {
       create_surface();
   }
   ~add_vulkan_surface() {
@@ -86,6 +86,9 @@ private:
 template<class T>
 class add_platform_needed_extensions : public T {
 public:
+  using parent = T;
+  add_platform_needed_extensions(const configure auto& conf) : parent{conf} {
+  }
   auto get_extensions() {
     auto ext = T::get_extensions();
     ext.push_back(vk::KHRDisplayExtensionName);
@@ -105,6 +108,9 @@ class add_event_loop
 
 template<class T>
 class add_window : T {
+public:
+    using parent = T;
+    add_window(const configure auto& conf) : parent{conf} {}
 };
 
 }; // class use_platform<platform::display>

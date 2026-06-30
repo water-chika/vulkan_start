@@ -241,12 +241,15 @@ inline wl_display *display_connect(const char *name) {
 }
 template <class T> class set_default_display_name : public T {
 public:
+  using parent = T;
+  set_default_display_name(const vulkan_hpp_helper::configure auto& conf) : parent{conf} {
+  }
   auto get_display_name() { return nullptr; }
 };
 template <class T> class add_display : public T {
 public:
   using parent = T;
-  add_display() {
+  add_display(const vulkan_hpp_helper::configure auto& conf) : parent{conf} {
     m_display = display_connect(parent::get_display_name());
     if (m_display == nullptr) {
       throw std::runtime_error{"wayland: failed to connect display"};
@@ -265,7 +268,7 @@ private:
 template <class T> class add_registry_listener : public T {
 public:
   using parent = T;
-  add_registry_listener() {
+  add_registry_listener(const vulkan_hpp_helper::configure auto& conf) : parent{conf} {
     wl_registry *registry = parent::get_registry();
     wl_registry_listener listener = {
         .global = parent::registry_handle_global,
@@ -282,7 +285,7 @@ public:
 template <class T> class cache_registry : public T {
 public:
   using parent = T;
-  cache_registry() {
+  cache_registry(const vulkan_hpp_helper::configure auto& conf) : parent{conf} {
     auto display = parent::get_display();
     m_registry = wl_display_get_registry(display);
   }
@@ -293,7 +296,10 @@ private:
 };
 template <class T> class add_registry_listener_callbacks : public T {
 public:
+  using parent = T;
   using this_type = add_registry_listener_callbacks<T>;
+  add_registry_listener_callbacks(const vulkan_hpp_helper::configure auto& conf) : parent{conf} {
+  }
   void registry_handle_global(wl_registry *registry, uint32_t name,
                               const char *interface, uint32_t version) {
     std::vector<std::tuple<void *, const wl_interface *, int>> binds{
@@ -331,7 +337,7 @@ private:
 template <typename T> class add_surface : public T {
 public:
   using parent = T;
-  add_surface() {
+  add_surface(const vulkan_hpp_helper::configure auto& conf) : parent{conf} {
     auto compositor = parent::get_compositor();
     m_surface = wl_compositor_create_surface(compositor);
   }
@@ -361,10 +367,11 @@ void water_chika_set_size_changed_callback(
 
 template <class T> class add_wayland_surface : public T {
 public:
+    using parent = T;
     static void dummy_size_changed_callback(int, int, void*) {
     }
 #ifdef VK_USE_PLATFORM_WAYLAND_KHR
-  add_wayland_surface() : state{} {
+  add_wayland_surface(const vulkan_hpp_helper::configure auto& conf) : parent{conf}, state{} {
       state.size_changed_callback = dummy_size_changed_callback;
     state.width = 640, state.height = 480;
     state.display = wl_display_connect(NULL);
@@ -409,6 +416,8 @@ private:
 template <class T> class add_wayland_event_loop : public T {
 public:
   using parent = T;
+  add_wayland_event_loop(const vulkan_hpp_helper::configure auto& conf) : parent{conf} {
+  }
   void event_loop() {
 #ifdef VK_USE_PLATFORM_WAYLAND_KHR
     while (!parent::get_event_loop_should_exit()) {
@@ -423,7 +432,9 @@ public:
 template <class T> class run_wayland_event_loop : public T {
 public:
   using parent = T;
-  run_wayland_event_loop() { parent::event_loop(); }
+  run_wayland_event_loop(const vulkan_hpp_helper::configure auto& conf) : parent{conf} {
+      parent::event_loop();
+  }
 };
 
 #include <poll.h>
