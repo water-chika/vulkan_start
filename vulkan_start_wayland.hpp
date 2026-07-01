@@ -4,6 +4,11 @@
 
 namespace vulkan_start {
 
+template<typename T>
+concept key_event_processable = requires (T t) {
+    t.process_key_event(0,0);
+};
+
 template<>
 class use_platform<platform::wayland> {
 public:
@@ -66,17 +71,40 @@ public:
     }
 };
 
+template<class T>
+class register_key_callback : public T {
+public:
+    using parent = T;
+    using this_type = register_key_callback<T>;
+    register_key_callback(const configure auto& conf) : parent{conf} {
+    }
+};
+template<key_event_processable T>
+class register_key_callback<T> : public T {
+public:
+    using parent = T;
+    using this_type = register_key_callback<T>;
+    register_key_callback(const configure auto& conf) : parent{conf} {
+        parent::set_key_callback(key_callback, this);
+    }
+    static void key_callback(int width, int height, void* data) {
+        auto th = reinterpret_cast<this_type*>(data);
+        th->process_key_event(width, height);
+    }
+};
+
 
 template<class T>
 class add_event_loop
     : public
       run_wayland_event_loop<
       add_wayland_event_loop<
+      register_key_callback<
       register_size_change_callback<
-      T>>>
+      T>>>>
 {
 public:
-    using parent = run_wayland_event_loop<add_wayland_event_loop<register_size_change_callback<T>>>;
+    using parent = run_wayland_event_loop<add_wayland_event_loop<register_key_callback<register_size_change_callback<T>>>>;
     add_event_loop(const configure auto& conf) : parent{conf} {
     }
     add_event_loop(const add_event_loop&) = delete;

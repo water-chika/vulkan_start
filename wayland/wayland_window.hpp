@@ -6,6 +6,7 @@
 #include <map>
 #include <vector>
 #include <array>
+#include <source_location>
 
 #ifdef VK_USE_PLATFORM_WAYLAND_KHR
 #include <wayland-client.h>
@@ -71,6 +72,9 @@ struct our_state {
 
   struct wl_seat *seat;
   struct wl_keyboard *keyboard;
+  std::vector<uint32_t> keymap;
+  void (*key_callback)(int, int, void*);
+  void* key_callback_user_data;
 
   struct wl_surface *surface;
   struct xdg_surface *xdg_surface;
@@ -113,6 +117,16 @@ static const struct xdg_wm_base_listener xdg_wm_base_listener = {
 
 static void wl_keyboard_keymap(void* data, struct wl_keyboard* keyboard,
         uint32_t keymap_format, int fd, uint32_t size) {
+    std::clog << "wayland: " << std::source_location::current().function_name() <<
+        std::format("{}, {}, {}", keymap_format, fd, size)
+        << std::endl;
+    struct our_state *state = (struct our_state *)data;
+    uint32_t* ptr = reinterpret_cast<uint32_t*>(mmap(NULL, size, PROT_READ, MAP_SHARED, fd, 0));
+    std::cout << std::endl;
+    int count = size/sizeof(*ptr);
+    state->keymap.resize(count);
+    std::copy(ptr, ptr+count, state->keymap.begin());
+    munmap(ptr, size);
 }
 
 static void wl_keyboard_enter(void* data, struct wl_keyboard* keyboard,
@@ -126,7 +140,15 @@ static void wl_keyboard_leave(void* data, struct wl_keyboard* keyboard,
 static void wl_keyboard_key(void* data, struct wl_keyboard* keyboard,
         uint32_t serial, uint32_t time, uint32_t key, uint32_t key_state) {
     std::clog << "wayland: keyboard: key: " <<
-        serial << ", " << time << ", " << key << ", " << key_state << std::endl;
+        std::format("{}, {}, {:#x}, {}", serial, time, key, key_state)
+        << std::endl;
+    struct our_state *state = (struct our_state *)data;
+    if (state->keymap.size() > key) {
+        std::cout << std::format("{:#x}", state->keymap[key+8]) << std::endl;
+    }
+    if (state->key_callback) {
+        state->key_callback(key, key_state, state->key_callback_user_data);
+    }
 }
 
 static void wl_keyboard_modifiers(void* data, struct wl_keyboard* keyboard,
@@ -158,6 +180,7 @@ static void wl_seat_capabilities(void* data, struct wl_seat* seat, uint32_t capa
     else {
         if (state->keyboard != NULL) {
             wl_keyboard_release(state->keyboard);
+            state->keyboard = NULL;
         }
     }
 }
@@ -404,6 +427,12 @@ public:
   void set_size_changed_callback(void (*callback)(int, int, void*), void* user_data) {
 #ifdef VK_USE_PLATFORM_WAYLAND_KHR
       water_chika_set_size_changed_callback(state, callback, user_data);
+#endif
+  }
+  void set_key_callback(void (*callback)(int, int, void*), void* user_data) {
+#ifdef VK_USE_PLATFORM_WAYLAND_KHR
+      state.key_callback = callback;
+      state.key_callback_user_data = user_data;
 #endif
   }
 
