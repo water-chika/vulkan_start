@@ -73,6 +73,8 @@ struct our_state {
   struct wl_seat *seat;
   struct wl_keyboard *keyboard;
   std::vector<uint32_t> keymap;
+  void (*keymap_callback)(int, int, void*);
+  void* keymap_callback_user_data;
   void (*key_callback)(int, int, void*);
   void* key_callback_user_data;
 
@@ -121,20 +123,21 @@ static void wl_keyboard_keymap(void* data, struct wl_keyboard* keyboard,
         std::format("{}, {}, {}", keymap_format, fd, size)
         << std::endl;
     struct our_state *state = (struct our_state *)data;
-    uint32_t* ptr = reinterpret_cast<uint32_t*>(mmap(NULL, size, PROT_READ, MAP_SHARED, fd, 0));
-    std::cout << std::endl;
-    int count = size/sizeof(*ptr);
-    state->keymap.resize(count);
-    std::copy(ptr, ptr+count, state->keymap.begin());
-    munmap(ptr, size);
+    if (keymap_format == 1) {
+        if (state->keymap_callback) {
+            state->keymap_callback(fd, size, state->keymap_callback_user_data);
+        }
+    }
 }
 
 static void wl_keyboard_enter(void* data, struct wl_keyboard* keyboard,
         uint32_t serial, wl_surface* surface, wl_array* keys) {
+    std::clog << "wayland: " << std::source_location::current().function_name() << std::endl;
 }
 
 static void wl_keyboard_leave(void* data, struct wl_keyboard* keyboard,
         uint32_t serial, wl_surface* surface) {
+    std::clog << "wayland: " << std::source_location::current().function_name() << std::endl;
 }
 
 static void wl_keyboard_key(void* data, struct wl_keyboard* keyboard,
@@ -433,6 +436,12 @@ public:
 #ifdef VK_USE_PLATFORM_WAYLAND_KHR
       state.key_callback = callback;
       state.key_callback_user_data = user_data;
+#endif
+  }
+  void set_keymap_callback(void (*callback)(int, int, void*), void* user_data) {
+#ifdef VK_USE_PLATFORM_WAYLAND_KHR
+      state.keymap_callback = callback;
+      state.keymap_callback_user_data = user_data;
 #endif
   }
 

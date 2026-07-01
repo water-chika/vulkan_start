@@ -12,7 +12,11 @@ add_library(vulkan_start
 )
 
 target_include_directories(vulkan_start PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
-target_link_libraries(vulkan_start PUBLIC vulkan_helper win32_helper)
+target_link_libraries(vulkan_start PUBLIC
+    vulkan_helper
+    win32_helper
+    xkb_helper
+)
 set_target_properties(vulkan_start PROPERTIES CXX_STANDARD 20)
 
 add_executable(demo
@@ -47,7 +51,9 @@ add_executable(cube_display
     shaders/cube.frag
     shaders/cube_frag.spv
 )
-target_link_libraries(cube_display PUBLIC vulkan_helper win32_helper)
+target_link_libraries(cube_display PUBLIC
+    vulkan_start
+)
 target_include_directories(cube_display PUBLIC wayland)
 set_target_properties(cube_display PROPERTIES CXX_STANDARD 23)
 

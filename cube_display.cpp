@@ -9,6 +9,6 @@ using app =
 ;
 
 int main() {
-  app app{vulkan_hpp_helper::empty_configure{}};
+  app app{cpp_helper::empty_configure{}};
   return 0;
 }

@@ -2,12 +2,9 @@
 
 #include "wayland/wayland_window.hpp"
 
-namespace vulkan_start {
+#include "xkb_helper.hpp"
 
-template<typename T>
-concept key_event_processable = requires (T t) {
-    t.process_key_event(0,0);
-};
+namespace vulkan_start {
 
 template<>
 class use_platform<platform::wayland> {
@@ -79,7 +76,7 @@ public:
     register_key_callback(const configure auto& conf) : parent{conf} {
     }
 };
-template<key_event_processable T>
+template<xkb_helper::key_event_processable T>
 class register_key_callback<T> : public T {
 public:
     using parent = T;
@@ -87,24 +84,54 @@ public:
     register_key_callback(const configure auto& conf) : parent{conf} {
         parent::set_key_callback(key_callback, this);
     }
-    static void key_callback(int width, int height, void* data) {
+    static void key_callback(int key, int state, void* data) {
         auto th = reinterpret_cast<this_type*>(data);
-        th->process_key_event(width, height);
+        th->process_key_event(key, state);
+    }
+};
+template<class T>
+class register_keymap_callback : public T {
+public:
+    using parent = T;
+    register_keymap_callback(const configure auto& conf) : parent{conf} {
+    }
+};
+template<xkb_helper::keymap_processable T>
+class register_keymap_callback<T> : public T {
+public:
+    using parent = T;
+    using this_type = register_keymap_callback<T>;
+    register_keymap_callback(const configure auto& conf) : parent{conf} {
+        parent::set_keymap_callback(keymap_callback, this);
+    }
+    static void keymap_callback(int fd, int size, void* data) {
+        auto th = reinterpret_cast<this_type*>(data);
+        th->process_keymap(fd, size);
     }
 };
 
+template<class T>
+using add_event_loop_parent =
+      run_wayland_event_loop<
+      add_wayland_event_loop<
+      register_key_callback<
+      register_keymap_callback<
+      register_size_change_callback<
+      xkb_helper::add_process_key_event<
+      xkb_helper::add_process_keymap<
+      xkb_helper::add_state<
+      xkb_helper::add_keymap<
+      xkb_helper::add_context<
+      T>>>>>>>>>>
+;
 
 template<class T>
 class add_event_loop
     : public
-      run_wayland_event_loop<
-      add_wayland_event_loop<
-      register_key_callback<
-      register_size_change_callback<
-      T>>>>
+      add_event_loop_parent<T>
 {
 public:
-    using parent = run_wayland_event_loop<add_wayland_event_loop<register_key_callback<register_size_change_callback<T>>>>;
+    using parent = add_event_loop_parent<T>;
     add_event_loop(const configure auto& conf) : parent{conf} {
     }
     add_event_loop(const add_event_loop&) = delete;
