@@ -72,11 +72,15 @@ struct our_state {
 
   struct wl_seat *seat;
   struct wl_keyboard *keyboard;
-  std::vector<uint32_t> keymap;
   void (*keymap_callback)(int, int, void*);
   void* keymap_callback_user_data;
   void (*key_callback)(int, int, void*);
   void* key_callback_user_data;
+  struct wl_pointer *pointer;
+  void (*pointer_motion_callback)(uint32_t x, uint32_t y, void*);
+  void* pointer_motion_callback_user_data;
+  void (*pointer_button_callback)(int button, int button_state, void*);
+  void* pointer_button_callback_user_data;
 
   struct wl_surface *surface;
   struct xdg_surface *xdg_surface;
@@ -146,9 +150,6 @@ static void wl_keyboard_key(void* data, struct wl_keyboard* keyboard,
         std::format("{}, {}, {:#x}, {}", serial, time, key, key_state)
         << std::endl;
     struct our_state *state = (struct our_state *)data;
-    if (state->keymap.size() > key) {
-        std::cout << std::format("{:#x}", state->keymap[key+8]) << std::endl;
-    }
     if (state->key_callback) {
         state->key_callback(key, key_state, state->key_callback_user_data);
     }
@@ -171,6 +172,62 @@ static const struct wl_keyboard_listener wl_keyboard_listener = {
     .repeat_info = wl_keyboard_repeat_info,
 };
 
+static void wl_pointer_enter(void* data, struct wl_pointer* pointer, uint32_t serial, wl_surface* surface, int surface_x, int surface_y) {
+    //std::clog << "wayland: " << std::source_location::current().function_name() << std::endl;
+}
+static void wl_pointer_leave(void* data, struct wl_pointer* pointer, uint32_t serial, wl_surface* surface) {
+    //std::clog << "wayland: " << std::source_location::current().function_name() << std::endl;
+}
+static void wl_pointer_motion(void* data, struct wl_pointer* pointer, uint32_t time, wl_fixed_t surface_x, wl_fixed_t surface_y) {
+    //std::clog << "wayland: " << std::source_location::current().function_name() << std::endl;
+    struct our_state *state = (struct our_state *)data;
+    if (state->pointer_motion_callback) {
+        state->pointer_motion_callback(wl_fixed_to_int(surface_x), wl_fixed_to_int(surface_y), state->pointer_motion_callback_user_data);
+    }
+}
+static void wl_pointer_button(void* data, struct wl_pointer* pointer, uint32_t serial, uint32_t time, uint32_t button, uint32_t button_state) {
+    //std::clog << "wayland: " << std::source_location::current().function_name() << std::endl;
+    struct our_state *state = (struct our_state *)data;
+    if (state->pointer_button_callback) {
+        state->pointer_button_callback(button, button_state, state->pointer_button_callback_user_data);
+    }
+}
+static void wl_pointer_axis(void* data, struct wl_pointer* pointer, uint32_t time, uint32_t axis, int value) {
+    //std::clog << "wayland: " << std::source_location::current().function_name() << std::endl;
+}
+static void wl_pointer_frame(void* data, struct wl_pointer* pointer) {
+    //std::clog << "wayland: " << std::source_location::current().function_name() << std::endl;
+}
+static void wl_pointer_axis_source(void* data, struct wl_pointer* pointer, uint32_t axis_source) {
+    //std::clog << "wayland: " << std::source_location::current().function_name() << std::endl;
+}
+static void wl_pointer_axis_stop(void* data, struct wl_pointer* pointer, uint32_t time, uint32_t axis) {
+    //std::clog << "wayland: " << std::source_location::current().function_name() << std::endl;
+}
+static void wl_pointer_axis_discrete(void* data, struct wl_pointer* pointer, uint32_t axis, int discrete) {
+    //std::clog << "wayland: " << std::source_location::current().function_name() << std::endl;
+}
+static void wl_pointer_axis_value120(void* data, struct wl_pointer* pointer, uint32_t axis, int value120) {
+    //std::clog << "wayland: " << std::source_location::current().function_name() << std::endl;
+}
+static void wl_pointer_axis_relative_direction(void* data, struct wl_pointer* pointer, uint32_t axis, uint32_t direction) {
+    //std::clog << "wayland: " << std::source_location::current().function_name() << std::endl;
+}
+
+static const struct wl_pointer_listener wl_pointer_listener = {
+    .enter = wl_pointer_enter,
+    .leave = wl_pointer_leave,
+    .motion = wl_pointer_motion,
+    .button = wl_pointer_button,
+    .axis = wl_pointer_axis,
+    .frame = wl_pointer_frame,
+    .axis_source = wl_pointer_axis_source,
+    .axis_stop = wl_pointer_axis_stop,
+    .axis_discrete = wl_pointer_axis_discrete,
+    .axis_value120 = wl_pointer_axis_value120,
+    .axis_relative_direction = wl_pointer_axis_relative_direction,
+};
+
 static void wl_seat_capabilities(void* data, struct wl_seat* seat, uint32_t capability) {
     std::clog << "wayland: seat: capabilities: " << capability << std::endl;
     struct our_state *state = (struct our_state *)data;
@@ -184,6 +241,18 @@ static void wl_seat_capabilities(void* data, struct wl_seat* seat, uint32_t capa
         if (state->keyboard != NULL) {
             wl_keyboard_release(state->keyboard);
             state->keyboard = NULL;
+        }
+    }
+    if (capability & WL_SEAT_CAPABILITY_POINTER) {
+        if (state->pointer == NULL) {
+            state->pointer = wl_seat_get_pointer(seat);
+            wl_pointer_add_listener(state->pointer, &wl_pointer_listener, state);
+        }
+    }
+    else {
+        if (state->pointer != NULL) {
+            wl_pointer_release(state->pointer);
+            state->pointer = NULL;
         }
     }
 }
@@ -442,6 +511,18 @@ public:
 #ifdef VK_USE_PLATFORM_WAYLAND_KHR
       state.keymap_callback = callback;
       state.keymap_callback_user_data = user_data;
+#endif
+  }
+  void set_pointer_motion_callback(void (*callback)(uint32_t, uint32_t, void*), void* user_data) {
+#ifdef VK_USE_PLATFORM_WAYLAND_KHR
+      state.pointer_motion_callback = callback;
+      state.pointer_motion_callback_user_data = user_data;
+#endif
+  }
+  void set_pointer_button_callback(void (*callback)(int, int, void*), void* user_data) {
+#ifdef VK_USE_PLATFORM_WAYLAND_KHR
+      state.pointer_button_callback = callback;
+      state.pointer_button_callback_user_data = user_data;
 #endif
   }
 

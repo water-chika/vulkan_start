@@ -109,11 +109,55 @@ public:
         th->process_keymap(fd, size);
     }
 };
+template<class T>
+class register_pointer_motion_callback : public T {
+public:
+    using parent = T;
+    using this_type = register_pointer_motion_callback<T>;
+    register_pointer_motion_callback(const configure auto& conf) : parent{conf} {
+    }
+};
+template<xkb_helper::pointer_motion_event_processable T>
+class register_pointer_motion_callback<T> : public T {
+public:
+    using parent = T;
+    using this_type = register_pointer_motion_callback<T>;
+    register_pointer_motion_callback(const configure auto& conf) : parent{conf} {
+        parent::set_pointer_motion_callback(pointer_motion_callback, this);
+    }
+    static void pointer_motion_callback(uint32_t x, uint32_t y, void* data) {
+        auto th = reinterpret_cast<this_type*>(data);
+        th->process_pointer_motion_event(x, y);
+    }
+};
+template<class T>
+class register_pointer_button_callback : public T {
+public:
+    using parent = T;
+    using this_type = register_pointer_button_callback<T>;
+    register_pointer_button_callback(const configure auto& conf) : parent{conf} {
+    }
+};
+template<xkb_helper::pointer_button_event_processable T>
+class register_pointer_button_callback<T> : public T {
+public:
+    using parent = T;
+    using this_type = register_pointer_button_callback<T>;
+    register_pointer_button_callback(const configure auto& conf) : parent{conf} {
+        parent::set_pointer_button_callback(pointer_button_callback, this);
+    }
+    static void pointer_button_callback(int button, int button_state, void* data) {
+        auto th = reinterpret_cast<this_type*>(data);
+        th->process_pointer_button_event(button, button_state);
+    }
+};
 
 template<class T>
 using add_event_loop_parent =
       run_wayland_event_loop<
       add_wayland_event_loop<
+      register_pointer_button_callback<
+      register_pointer_motion_callback<
       register_key_callback<
       register_keymap_callback<
       register_size_change_callback<
@@ -122,7 +166,7 @@ using add_event_loop_parent =
       xkb_helper::add_state<
       xkb_helper::add_keymap<
       xkb_helper::add_context<
-      T>>>>>>>>>>
+      T>>>>>>>>>>>>
 ;
 
 template<class T>
