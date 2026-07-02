@@ -1,8 +1,8 @@
 #pragma once
 
-#include "wayland/wayland_window.hpp"
+#include <wayland_helper.hpp>
 
-#include "xkb_helper.hpp"
+#include <xkb_helper.hpp>
 
 namespace vulkan_start {
 

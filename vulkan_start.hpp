@@ -80,7 +80,6 @@ class add_swapchain_image_extent
 
 #include "vulkan_start_wayland.hpp"
 #include "vulkan_start_windows.hpp"
-#include "wayland/wayland_window.hpp"
 #include "cube_display.hpp"
 
 namespace vulkan_start {
