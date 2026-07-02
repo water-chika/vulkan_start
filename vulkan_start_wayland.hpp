@@ -154,8 +154,8 @@ public:
 
 template<class T>
 using add_event_loop_parent =
-      run_wayland_event_loop<
-      add_wayland_event_loop<
+      wayland_helper::run_wayland_event_loop<
+      wayland_helper::add_wayland_event_loop<
       register_pointer_button_callback<
       register_pointer_motion_callback<
       register_key_callback<
@@ -184,17 +184,17 @@ public:
 
 template<typename T>
 using add_pollfds =
-      add_wayland_pollfd<
+      wayland_helper::add_wayland_pollfd<
       register_size_change_callback<
       T
       >>
 ; // template add_pollfds
 
 template<class T>
-class add_window : public add_wayland_surface<T>
+class add_window : public wayland_helper::add_wayland_surface<T>
 {
 public:
-    using parent = add_wayland_surface<T>;
+    using parent = wayland_helper::add_wayland_surface<T>;
     add_window(const configure auto& conf) : parent{conf} {}
 }; // class add_window
 
