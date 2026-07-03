@@ -126,13 +126,13 @@ template<class T>
 class add_frame_time_analyser : public T{
 public:
     using parent = T;
-    add_frame_time_analyser(const configure auto& conf) : parent{conf} {
+    add_frame_time_analyser(const configure auto& conf) : parent{conf},
+        m_frame_time{}, m_frame_index{}, m_last_time_point{}, m_previous_index{}{
     }
     void draw() {
-        const int update_frames_count = 10000;
-        if (m_frame_index % update_frames_count == 0) {
-            auto now = steady_clock::now();
-            m_frame_time = (now - m_last_time_point) / update_frames_count;
+        auto now = steady_clock::now();
+        if (now - m_last_time_point > 500ms && m_previous_index != m_frame_index) {
+            m_frame_time = (now - m_last_time_point) / (m_frame_index - m_previous_index);
             double fps = 1000000000.0/m_frame_time.count();
             std::clog
                 << "frame time: "
@@ -143,6 +143,7 @@ public:
                 << fps
                 << "\t\r";
             m_last_time_point = now;
+            m_previous_index = m_frame_index;
         }
 
         parent::draw();
@@ -153,6 +154,7 @@ private:
     nanoseconds m_frame_time;
     uint64_t m_frame_index;
     time_point<steady_clock, nanoseconds> m_last_time_point;
+    uint64_t m_previous_index;
 };
 
 }
