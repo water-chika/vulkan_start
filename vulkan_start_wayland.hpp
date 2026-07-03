@@ -200,8 +200,6 @@ public:
     using parent = add_event_loop_parent<T>;
     add_event_loop(const configure auto& conf) : parent{conf} {
     }
-    add_event_loop(const add_event_loop&) = delete;
-    add_event_loop(add_event_loop&&) = default;
 }; // class add_event_loop
 
 template<typename T>

@@ -4,6 +4,8 @@
 #include <poll.h>
 #endif
 
+#include <cpp_helper.hpp>
+
 namespace vulkan_start{
 template<class T>
 class add_run_loop : public T {
@@ -96,14 +98,23 @@ public:
   }
 }; // class add_platform_needed_extensions
 
-
-template<class T>
-class add_event_loop
-    : public
+template<typename T>
+using add_event_loop_parent =
     add_run_loop<
     T
     >
+;
+template<class T>
+class add_event_loop
+    : public
+    add_event_loop_parent<
+    T
+    >
 {
+public:
+    using parent = add_event_loop_parent<T>;
+    add_event_loop(const configure auto& conf) : parent{conf} {
+    }
 }; // class add_event_loop
 
 template<class T>

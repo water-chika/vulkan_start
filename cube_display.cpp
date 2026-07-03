@@ -9,6 +9,13 @@ using app =
 ;
 
 int main() {
-  app app{cpp_helper::empty_configure{}};
-  return 0;
+    try{
+      //auto conf = cpp_helper::empty_configure{};
+        vulkan_start::empty_configure conf{};
+        app t{conf};
+    }
+    catch (std::exception& e) {
+        std::cerr << e.what() << std::endl;
+    }
+    return 0;
 }
