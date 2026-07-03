@@ -110,6 +110,26 @@ public:
     }
 };
 template<class T>
+class register_keyboard_modifiers_callback : public T {
+public:
+    using parent = T;
+    register_keyboard_modifiers_callback(const configure auto& conf) : parent{conf} {
+    }
+};
+template<xkb_helper::keyboard_modifiers_event_processable T>
+class register_keyboard_modifiers_callback<T> : public T {
+public:
+    using parent = T;
+    using this_type = register_keyboard_modifiers_callback<T>;
+    register_keyboard_modifiers_callback(const configure auto& conf) : parent{conf} {
+        parent::set_keyboard_modifiers_callback(keyboard_modifiers_callback, this);
+    }
+    static void keyboard_modifiers_callback(uint32_t mods_depressed, uint32_t mods_latched, uint32_t mods_locked, uint32_t group, void* data) {
+        auto th = reinterpret_cast<this_type*>(data);
+        th->process_keyboard_modifiers(mods_depressed, mods_latched, mods_locked, group);
+    }
+};
+template<class T>
 class register_pointer_motion_callback : public T {
 public:
     using parent = T;
@@ -159,14 +179,16 @@ using add_event_loop_parent =
       register_pointer_button_callback<
       register_pointer_motion_callback<
       register_key_callback<
+      register_keyboard_modifiers_callback<
       register_keymap_callback<
       register_size_change_callback<
       xkb_helper::add_process_key_event<
+      xkb_helper::add_process_keyboard_modifiers<
       xkb_helper::add_process_keymap<
       xkb_helper::add_state<
       xkb_helper::add_keymap<
       xkb_helper::add_context<
-      T>>>>>>>>>>>>
+      T>>>>>>>>>>>>>>
 ;
 
 template<class T>
