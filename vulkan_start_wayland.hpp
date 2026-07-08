@@ -3,6 +3,7 @@
 #include <wayland_helper.hpp>
 
 #include <xkb_helper.hpp>
+#include <posix.hpp>
 
 namespace vulkan_start {
 
@@ -203,11 +204,24 @@ public:
 }; // class add_event_loop
 
 template<typename T>
-using add_pollfds =
+using add_pollfds_loop =
+      wayland_helper::run_wayland_event_loop<
+      wayland_helper::add_wayland_pollfds_loop<
+      posix::add_poll_events<
       wayland_helper::add_wayland_pollfd<
+      register_pointer_button_callback<
+      register_pointer_motion_callback<
+      register_key_callback<
+      register_keyboard_modifiers_callback<
+      register_keymap_callback<
       register_size_change_callback<
-      T
-      >>
+      xkb_helper::add_process_key_event<
+      xkb_helper::add_process_keyboard_modifiers<
+      xkb_helper::add_process_keymap<
+      xkb_helper::add_state<
+      xkb_helper::add_keymap<
+      xkb_helper::add_context<
+      T>>>>>>>>>>>>>>>>
 ; // template add_pollfds
 
 template<class T>

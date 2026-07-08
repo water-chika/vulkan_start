@@ -15,6 +15,7 @@ target_link_libraries(vulkan_start PUBLIC
     win32_helper
     wayland_helper
     xkb_helper
+    posix_cpp
 )
 set_target_properties(vulkan_start PROPERTIES CXX_STANDARD 20)
 
