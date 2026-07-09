@@ -174,9 +174,32 @@ public:
 };
 
 template<class T>
+class register_pointer_axis_callback : public T {
+public:
+    using parent = T;
+    using this_type = register_pointer_axis_callback<T>;
+    register_pointer_axis_callback(const configure auto& conf) : parent{conf} {
+    }
+};
+template<xkb_helper::pointer_axis_event_processable T>
+class register_pointer_axis_callback<T> : public T {
+public:
+    using parent = T;
+    using this_type = register_pointer_axis_callback<T>;
+    register_pointer_axis_callback(const configure auto& conf) : parent{conf} {
+        parent::set_pointer_axis_callback(pointer_axis_callback, this);
+    }
+    static void pointer_axis_callback(uint32_t axis, int value, void* data) {
+        auto th = reinterpret_cast<this_type*>(data);
+        th->process_pointer_axis_event(axis, value);
+    }
+};
+
+template<class T>
 using add_event_loop_parent =
       wayland_helper::run_wayland_event_loop<
       wayland_helper::add_wayland_event_loop<
+      register_pointer_axis_callback<
       register_pointer_button_callback<
       register_pointer_motion_callback<
       register_key_callback<
@@ -189,7 +212,7 @@ using add_event_loop_parent =
       xkb_helper::add_state<
       xkb_helper::add_keymap<
       xkb_helper::add_context<
-      T>>>>>>>>>>>>>>
+      T>>>>>>>>>>>>>>>
 ;
 
 template<class T>
@@ -209,6 +232,7 @@ using add_pollfds_loop =
       wayland_helper::add_wayland_pollfds_loop<
       posix::add_poll_events<
       wayland_helper::add_wayland_pollfd<
+      register_pointer_axis_callback<
       register_pointer_button_callback<
       register_pointer_motion_callback<
       register_key_callback<
@@ -221,7 +245,7 @@ using add_pollfds_loop =
       xkb_helper::add_state<
       xkb_helper::add_keymap<
       xkb_helper::add_context<
-      T>>>>>>>>>>>>>>>>
+      T>>>>>>>>>>>>>>>>>
 ; // template add_pollfds
 
 template<class T>
