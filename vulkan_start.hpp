@@ -134,14 +134,14 @@ public:
         if (now - m_last_time_point > 500ms && m_previous_index != m_frame_index) {
             m_frame_time = (now - m_last_time_point) / (m_frame_index - m_previous_index);
             double fps = 1000000000.0/m_frame_time.count();
-            std::clog
+            /*std::clog
                 << "frame time: "
                 << std::setw(10)
                 << m_frame_time.count()/1000000.0
                 << "ms"
                 << "fps: "
                 << fps
-                << "\t\r";
+                << "\t\r";*/
             m_last_time_point = now;
             m_previous_index = m_frame_index;
         }
@@ -149,6 +149,9 @@ public:
         parent::draw();
 
         m_frame_index++;
+    }
+    auto get_cpu_frame_time() {
+        return m_frame_time;
     }
 private:
     nanoseconds m_frame_time;
