@@ -6,6 +6,9 @@ namespace vulkan_start {
 
 template <class T> class add_window_process : public T {
 public:
+  using parent = T;
+  add_window_process(const configure auto& conf) : parent{conf}
+  {}
   static LRESULT CALLBACK window_process(HWND hwnd, UINT uMsg, WPARAM wParam,
                                          LPARAM lParam) {
     static std::map<HWND, add_window_process<T> *> hwnd_this{};
@@ -44,7 +47,7 @@ private:
 template <class T> class add_window_class : public T {
 public:
   using parent = T;
-  add_window_class() {
+  add_window_class(const configure auto& conf) : parent{conf} {
     const char *window_class_name = "draw_pixels";
     WNDCLASS window_class{};
     window_class.hInstance = GetModuleHandle(nullptr);
@@ -63,17 +66,23 @@ private:
 template <int Width, int Height, class T>
 class set_window_resolution : public T {
 public:
+  using parent = T;
+  set_window_resolution(const configure auto& conf) : parent{conf} {
+  }
   auto get_window_width() { return Width; }
   auto get_window_height() { return Height; }
 };
 template <int WindowStyle, class T> class set_window_style : public T {
 public:
+  using parent = T;
+  set_window_style(const configure auto& conf) : parent{conf} {
+  }
   auto get_window_style() { return WindowStyle; }
 };
 template <class T> class adjust_window_resolution : public T {
 public:
   using parent = T;
-  adjust_window_resolution() {
+  adjust_window_resolution(const configure auto& conf) : parent{conf} {
     auto width = parent::get_window_width();
     auto height = parent::get_window_height();
     auto window_style = parent::get_window_style();
@@ -92,7 +101,7 @@ private:
 template <class T> class add_window : public T {
 public:
   using parent = T;
-  add_window() {
+  add_window(const configure auto& conf) : parent{conf} {
     int width = parent::get_window_width();
     int height = parent::get_window_height();
     int window_style = parent::get_window_style();
@@ -120,7 +129,7 @@ public:
 template <class T> class add_vulkan_surface : public T {
 public:
   using parent = T;
-  add_vulkan_surface() { create_surface(); }
+  add_vulkan_surface(const configure auto& conf) : parent{conf} { create_surface(); }
   ~add_vulkan_surface() { destroy_surface(); }
   void create_surface() {
 #ifdef VK_USE_PLATFORM_WIN32_KHR
@@ -144,13 +153,12 @@ private:
 }; //class add_vulkan_surface
 
 template<class T>
-class add_platform_needed_extensions : public add_win32_surface_extension<T>
-{
-};
+using add_platform_needed_extensions = add_win32_surface_extension<T>;
+
 template <class T> class add_event_loop : public jump_draw_if_window_minimized<T> {
 public:
-  using parent = T;
-  add_event_loop() {
+  using parent = jump_draw_if_window_minimized<T>;
+  add_event_loop(const configure auto& conf) : parent{conf} {
     MSG msg = {};
     while (msg.message != WM_QUIT) {
       if (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE)) {
@@ -166,8 +174,15 @@ template <class T> class add_window
     : public T
 {
 public:
+    using parent = T;
+    add_window(const configure auto& conf) : parent{conf},
+        m_window{conf}
+    {}
     auto get_window() {
       return m_window.get_window();
+    }
+    bool is_window_minimized() {
+        return m_window.is_window_minimized();
     }
 private:
     vulkan_start::add_window<
