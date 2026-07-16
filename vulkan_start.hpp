@@ -78,9 +78,12 @@ class add_swapchain_image_extent
 
 } // namespace vulkan_start
 
-#include "vulkan_start_wayland.hpp"
+#if WIN32
 #include "vulkan_start_windows.hpp"
+#else
+#include "vulkan_start_wayland.hpp"
 #include "cube_display.hpp"
+#endif
 
 namespace vulkan_start {
 using namespace vulkan_hpp_helper;

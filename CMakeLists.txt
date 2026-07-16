@@ -13,10 +13,15 @@ target_include_directories(vulkan_start PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(vulkan_start PUBLIC
     vulkan_helper
     win32_helper
+)
+if(WIN32)
+else()
+target_link_libraries(vulkan_start PUBLIC
     wayland_helper
     xkb_helper
     posix_cpp
 )
+endif()
 set_target_properties(vulkan_start PROPERTIES CXX_STANDARD 20)
 
 add_executable(demo
